@@ -1,0 +1,25 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: remote/Dockerfile
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    ports:
+      - "127.0.0.1:7940:7940"
+    environment:
+      SHINEAI_REMOTE_PUBLIC_URL: ${SHINEAI_REMOTE_PUBLIC_URL:?Set the HTTPS public URL}
+      SHINEAI_REMOTE_USER: ${SHINEAI_REMOTE_USER:?Set an owner username}
+      SHINEAI_REMOTE_PASSWORD: ${SHINEAI_REMOTE_PASSWORD:?Set a password of at least 12 characters}
+    volumes:
+      - remote-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7940/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  remote-data:

@@ -1,0 +1,15 @@
+**/node_modules
+.git
+.runtime
+.data
+.test-data
+.remote-data
+**/.remote-data
+archive
+out
+artifacts
+resources
+**/.env
+**/.env.*
+!**/.env.example
+*.log

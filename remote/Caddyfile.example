@@ -1,0 +1,4 @@
+# Run Caddy on the host after DNS points this domain to your server.
+ai.example.com {
+    reverse_proxy 127.0.0.1:7940
+}

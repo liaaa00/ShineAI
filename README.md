@@ -24,7 +24,7 @@ npm start
 1. 将本地保存的 `official-1.0.6.asar` 及对应的 `.asar.unpacked` 放入 `archive/`。归档 SHA-256 必须为 `352bf011b87d372e85cd8c7da35e1fccef20b271f44a4f0f43911ca26239a9fe`。然后运行 `npm run restore:dependencies`，恢复 ABI 149 的应用依赖。不要用根目录 `npm install` 替换发布快照。
 2. 将固定的 `electron-v44.5.1-win32-x64.zip` 放入 `.runtime/`，运行 `python scripts/restore-runtime.py`。校验值见脚本。测试工具运行 `npm ci --prefix .runtime --ignore-scripts`。
 3. 从自己的完整工程备份恢复 `resources/git-bash`、`resources/runtime`、`resources/tools`、`resources/voice`，以及 `resources/builtin-mcps/shineai-claw/node_modules`。也可用 `node scripts/restore-local-resources.mjs "完整备份目录"` 复制这些固定目录；不会读取备份中的用户数据。该 MCP 的依赖也可在其目录执行 `npm ci --omit=dev --ignore-scripts`。
-4. 运行 `npm run check`，然后 `npm start`。需要重做上游解码时，还须提供未修改的 `archive/official-1.0.6/` 基线；普通开发直接修改现有 `src`。
+4. 运行 `npm ci --prefix remote/server --ignore-scripts` 准备独立远程服务的依赖。运行 `npm run check`，然后 `npm start`。需要重做上游解码时，还须提供未修改的 `archive/official-1.0.6/` 基线；普通开发直接修改现有 `src`。
 
 本机完整工程保留这些离线资源。GitHub 上传的是工程代码，不是完整安装分发镜像。
 
@@ -33,6 +33,7 @@ npm start
 ```powershell
 npm run check
 npm run smoke:brand
+npm run smoke:remote
 npm run smoke:file-links
 npm run smoke:market
 npm run e2e:local
@@ -56,8 +57,8 @@ npm run package:win
 | `resources/web-client/` | 已发布的手机网页产物，尚未接入自建远程服务 |
 | `scripts/`、`test/` | 构建、补丁、运行检查与单元测试 |
 
-手机协同建议采用“手机网页 → 自建账号/设备服务器 → 电脑端出站连接”的方式。会话状态和产物按需同步，任务在电脑执行；电脑离线时无法操作电脑文件。现有手机网页并非可直接上线的自建方案。依据、可复用范围和实施顺序见 [手机远程协同分析](docs/MOBILE-REMOTE-PLAN.md)。
+手机协同第一版已实现“手机网页 → 自建服务器 → 电脑端出站连接”：登录、绑定、共享指定会话、发送消息、查看回复和停止运行。电脑默认关闭连接，需要手动选择共享会话。当前为单账号版本，已通过本地端到端验证；公网使用需要自行部署 HTTPS 服务。使用方法与 Docker 配置见 [随行工作台](remote/README.md)，研究依据和后续阶段见 [架构分析](docs/MOBILE-REMOTE-PLAN.md)。
 
-更多说明：[二次开发指南](docs/二次开发指南.md)、[文件定位](docs/FILE_LINKS.md)、[本轮交付记录](docs/SHINEAI-DELIVERY-2026-10-15.md)。其他检查报告包含此前开发阶段的历史证据，应以本轮记录区分实际验证范围。
+更多说明：[二次开发指南](docs/二次开发指南.md)、[文件定位](docs/FILE_LINKS.md)、[品牌改名交付记录](docs/SHINEAI-DELIVERY-2026-10-15.md)、[手机协同交付记录](docs/MOBILE-REMOTE-V1-2026-10-15.md)。其他检查报告包含此前开发阶段的历史证据，应以对应记录区分实际验证范围。
 
 本仓库的重建与改名不改变上游及第三方代码、资源的权利归属；保留原有许可文件。没有将整个重建工程重新声明为 MIT 授权。

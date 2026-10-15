@@ -4,6 +4,8 @@ node_modules/
 .runtime/*.zip
 .runtime/packaging/
 .runtime/media-tools/
+.runtime/remote-npm-cache/
+.remote-data/
 .data/
 .test-data/
 out/

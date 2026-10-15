@@ -7,9 +7,10 @@ import { patchLocalResponsiveness, patchRuntimePorts } from './patch-local-respo
 import { patchSkillMarketMain, patchSkillMarketRenderer } from './patch-skill-market.mjs';
 import { patchReliabilityMain, patchReliabilityRenderer } from './patch-reliability.mjs';
 import { patchFileLinksMain, patchFileLinksRenderer } from './patch-file-links.mjs';
+import { patchRemote } from './patch-remote.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mainFile = path.join(root, 'src/main/index.js');
-let main = fs.readFileSync(mainFile, 'utf8');
+let main = patchRemote(fs.readFileSync(mainFile, 'utf8'));
 function once(source, from, to, label) {
   if (source.includes(to)) return source;
   if (source.includes('/* local edition: cloud UI removed */') && label === 'local account menu') return source;

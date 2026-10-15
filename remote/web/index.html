@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17365d">
+  <title>ShineAI · 随行工作台</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="masthead"><a class="brand" href="/"><img src="/icon.svg" alt="" width="30" height="30">ShineAI <span>随行工作台</span></a><button id="logout" class="quiet" hidden>退出</button></header>
+  <main>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="login-view" class="login-card" hidden>
+      <p class="eyebrow">从手机，回到你的电脑</p><h1>工作接着走。</h1>
+      <p class="intro">查看电脑上的会话，继续发出指令。<br>项目和模型配置，仍由电脑管理。</p>
+      <form id="login-form"><label>账号<input id="username" name="username" autocomplete="username" required maxlength="80"></label><label>密码<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024"></label><button class="primary" type="submit">进入工作台 <span aria-hidden="true">→</span></button></form>
+      <p class="note">使用你在自建服务中设置的账号。</p>
+    </section>
+    <section id="workspace-view" hidden>
+      <div class="workspace-heading"><div><p class="eyebrow">你的电脑，随时接续</p><h1>设备与会话</h1></div><button id="pair" class="outline">＋ 连接电脑</button></div>
+      <div id="pair-panel" class="pair-panel" hidden><div><strong>在电脑端输入绑定码</strong><p>打开 ShineAI → 手机协同，填写本网页地址和下方绑定码。</p></div><output id="pair-code"></output><p id="pair-expiry" class="note"></p></div>
+      <div class="workbench"><aside class="navigator"><label class="device-label" for="device-select">当前电脑</label><div class="device-picker"><span id="connection-dot" class="dot"></span><select id="device-select" aria-label="当前电脑"></select></div><div class="device-meta"><span id="device-state">尚未连接</span><button id="revoke" class="quiet danger" hidden>解除绑定</button></div><div id="session-list" class="session-list" aria-label="会话列表"></div></aside>
+      <section class="conversation" aria-label="当前会话"><div class="conversation-head"><div><p id="session-state" class="eyebrow">从左侧选择会话</p><h2 id="session-title">接着做，随时看。</h2></div><button id="stop" class="outline danger" disabled>停止任务</button></div><div id="messages" class="messages" aria-live="off"><div class="empty"><span class="empty-mark" aria-hidden="true">↗</span><h3>先连接一台电脑</h3><p>绑定后，在电脑端选择允许访问的会话并开启连接。<br>电脑需要保持运行和联网。</p></div></div><form id="compose" class="composer"><label class="sr-only" for="prompt">发送到电脑的指令</label><textarea id="prompt" placeholder="继续这个会话，交给电脑执行…" rows="2" maxlength="16000" disabled></textarea><div class="composer-foot"><span id="compose-hint">电脑端的权限设置仍然生效</span><button id="send" class="primary" type="submit" disabled>发送到电脑 ↑</button></div></form></section></div>
+    </section>
+  </main>
+</body>
+</html>
