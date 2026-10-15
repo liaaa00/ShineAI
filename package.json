@@ -14,8 +14,6 @@
     "check": "npm test && npm run build && npm run verify && npm run smoke && npm run smoke:cloud && npm run smoke:codex && npm run smoke:local",
     "smoke": "node scripts/smoke.mjs",
     "smoke:brand": "node scripts/brand-smoke.mjs",
-    "remote:start": "node remote/server/index.cjs",
-    "smoke:remote": "node scripts/remote-smoke.mjs",
     "smoke:cloud": "node scripts/cloud-smoke.mjs",
     "smoke:market": "node scripts/market-smoke.mjs",
     "smoke:skills": "node scripts/skill-install-smoke.mjs",

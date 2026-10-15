@@ -4071,13 +4071,6 @@ electron.contextBridge.exposeInMainWorld("api", {
 electron.contextBridge.exposeInMainWorld("development", {
   getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
   getServiceAccess: () => electron.ipcRenderer.invoke("dev:service-access"),
-  remote: {
-    get: () => electron.ipcRenderer.invoke("dev:remote:get"),
-    pair: input => electron.ipcRenderer.invoke("dev:remote:pair", input),
-    setAccess: input => electron.ipcRenderer.invoke("dev:remote:access", input),
-    disconnect: () => electron.ipcRenderer.invoke("dev:remote:disconnect"),
-    forget: () => electron.ipcRenderer.invoke("dev:remote:forget")
-  },
   appearance: {
     get: () => electron.ipcRenderer.invoke("dev:appearance:get"),
     importMedia: () => electron.ipcRenderer.invoke("dev:appearance:import"),

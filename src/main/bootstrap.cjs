@@ -41,7 +41,6 @@ installCloudNetworkPolicy(app);
 registerRuntimeInfo({ ipcMain, config });
 registerServiceAccess(ipcMain, config);
 require('./extensions/appearance.cjs').registerAppearance({app,ipcMain,config,...require('electron')});
-require('./extensions/remote-bridge.cjs').registerRemote({app,ipcMain,config,...require('electron')});
 ipcMain.on('dev:preload-info', event => { event.returnValue = { cwd: root, home: require('node:os').homedir() }; });
 app.on('browser-window-created', (_event, window) => {
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(config.title); });
