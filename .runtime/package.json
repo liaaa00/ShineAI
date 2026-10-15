@@ -1,0 +1,12 @@
+{
+  "name": "shineai-dev-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "electron": "44.5.1",
+    "playwright-core": "1.58.2",
+    "prettier": "3.6.2",
+    "acorn": "8.15.0",
+    "acorn-walk": "8.3.4"
+  }
+}

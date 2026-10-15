@@ -1,0 +1,14 @@
+import { aN as createLucideIcon } from "./index-0LVJEr5c.js";
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const MoveRight = createLucideIcon("MoveRight", [
+  ["path", { d: "M18 8L22 12L18 16", key: "1r0oui" }],
+  ["path", { d: "M2 12H22", key: "1m8cig" }]
+]);
+export {
+  MoveRight as default
+};

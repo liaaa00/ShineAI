@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const electron = path.join(root, '.runtime/electron/electron.exe');
+if (!fs.existsSync(electron)) throw new Error('Project runtime is missing. See README: restore runtime.');
+if (!fs.existsSync(path.join(root, 'out/main/bootstrap.cjs'))) throw new Error('Build output missing. Run npm run build first.');
+const env = { ...process.env };
+delete env.ELECTRON_RUN_AS_NODE;
+const child = spawn(electron, [root], { cwd: root, env, detached: true, stdio: 'ignore', windowsHide: false });
+child.on('error', error => { console.error(error.message); process.exitCode = 1; });
+child.unref();
+console.log('Started ShineAI 1.0.6; data directory: ' + path.join(root, '.data'));

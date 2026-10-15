@@ -1,0 +1,712 @@
+/*
+ * 画布节点 + 偷看卡样式（原型 docs/prototypes/workbench-canvas：oat-paper + 朱红批印）。
+ * 颜色全部走主题 token（--color-*），浅色 / 深色主题都成立；只在本组件内派生 --cn-* 变量。
+ */
+.cn-node,
+.cn-peek,
+[data-pending-panel] {
+  --cn-bg: var(--color-bg-primary);
+  --cn-panel: var(--color-bg-tertiary);
+  --cn-border: var(--color-border);
+  --cn-border-2: color-mix(in srgb, var(--color-text-muted) 45%, transparent);
+  --cn-ink-1: var(--color-text-primary);
+  --cn-ink-2: var(--color-text-secondary);
+  --cn-ink-3: var(--color-text-muted);
+  --cn-needs: var(--color-accent-orange, var(--color-accent-red));
+  --cn-needs-soft: color-mix(in srgb, var(--cn-needs) 14%, transparent);
+  --cn-auto: var(--color-accent-green);
+  --cn-auto-soft: color-mix(in srgb, var(--cn-auto) 14%, transparent);
+  --cn-warn: var(--color-accent-yellow);
+  --cn-warn-soft: color-mix(in srgb, var(--cn-warn) 14%, transparent);
+  --cn-down: var(--color-accent-red);
+  --cn-down-soft: color-mix(in srgb, var(--cn-down) 10%, transparent);
+  --cn-idea: var(--color-accent-yellow);
+  --cn-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px -2px rgb(0 0 0 / 0.08);
+  --cn-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Microsoft YaHei UI', monospace;
+  --cn-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', STSong, SimSun, serif;
+}
+
+/* ── 节点基座 ── */
+.cn-node {
+  position: relative;
+  box-sizing: border-box;
+  width: 236px;
+  /* 高度与布局估高同源：CanvasNodeCard 用 canvasNodeHeight 写入 --cn-h */
+  height: var(--cn-h, auto);
+  padding: 7px 12px;
+  border: 1px solid var(--cn-border);
+  border-radius: 14px;
+  background: var(--cn-bg);
+  box-shadow: var(--cn-shadow);
+  color: var(--cn-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  cursor: pointer;
+  transition: box-shadow 0.18s, border-color 0.18s, opacity 0.25s;
+}
+.cn-node:hover { border-color: var(--cn-border-2); }
+.cn-node:focus-visible { outline: 2px solid var(--cn-needs); outline-offset: 2px; }
+.cn-node.is-selected { border-color: var(--cn-ink-1); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cn-ink-1) 10%, transparent), var(--cn-shadow); }
+.cn-node.is-faded { opacity: 0.28; }
+
+.cn-tags { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; min-width: 0; height: 16px; font-size: 11px; color: var(--cn-ink-3); }
+.cn-project {
+  max-width: 130px; padding: 0 6px; border-radius: 5px; background: var(--cn-panel); color: var(--cn-ink-2);
+  font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 16px;
+}
+.cn-sub { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cn-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cn-ico { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: var(--cn-panel); color: var(--cn-ink-2); }
+.cn-ico svg { width: 15px; height: 15px; }
+.cn-title { flex: 1; min-width: 0; font-weight: 600; color: var(--cn-ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cn-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--cn-ink-3); white-space: nowrap; min-width: 0; }
+.cn-meta-text { font-family: var(--cn-mono); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; }
+.cn-meta-quiet { color: var(--color-accent-orange, #fb923c); }
+.cn-model { min-width: 0; max-width: 45%; padding: 0 5px; border-radius: 4px; background: var(--cn-ink-4, rgba(127, 127, 127, .12)); font-family: var(--cn-mono); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
+.cn-tail {
+  margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--cn-border);
+  font: 11.5px/16px var(--cn-mono); color: var(--cn-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── 状态 chip ── */
+.cn-chip { display: inline-flex; align-items: center; gap: 4px; flex: none; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--cn-ink-3); background: color-mix(in srgb, var(--cn-ink-1) 6%, transparent); }
+.cn-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-running .cn-chip { color: var(--cn-auto); background: var(--cn-auto-soft); }
+.st-running .cn-dot { animation: cn-pulse 1.6s ease-in-out infinite; }
+/* 在跑：会话 / 流水线卡左侧一道绿边，扫画布时一眼认出（选中态照常盖过；目标 / 团队卡自带框形不叠） */
+.kind-session.st-running:not(.is-selected), .kind-pipeline.st-running:not(.is-selected) { box-shadow: inset var(--cn-run-w, 3px) 0 0 var(--cn-auto), var(--cn-shadow); }
+.st-sleeping { background: var(--cn-panel); }
+.st-sleeping .cn-title { color: var(--cn-ink-2); }
+.st-succeeded .cn-chip { color: var(--cn-auto); background: transparent; padding-left: 0; }
+.st-partial { border-color: color-mix(in srgb, var(--cn-warn) 50%, transparent); }
+.st-partial .cn-chip { color: var(--cn-warn); background: var(--cn-warn-soft); }
+.st-failed {
+  border-color: color-mix(in srgb, var(--cn-down) 50%, transparent);
+  background-image: repeating-linear-gradient(135deg, var(--cn-down-soft) 0 6px, transparent 6px 12px);
+  background-size: 28px 100%; background-repeat: no-repeat; background-position: right;
+}
+.st-failed .cn-chip { color: var(--cn-down); background: var(--cn-down-soft); }
+.st-stopped { opacity: 0.72; }
+.st-awaiting { border-color: var(--cn-needs); box-shadow: 0 0 0 3px var(--cn-needs-soft), var(--cn-shadow); }
+.st-awaiting .cn-chip { color: var(--cn-ink-2); }
+.st-awaiting .cn-chip .cn-dot { color: var(--cn-needs); }
+.st-awaiting.is-stale .cn-chip { color: var(--cn-needs); background: var(--cn-border); }
+
+/* 朱红「批」印 */
+.cn-seal {
+  position: absolute; right: -9px; top: -9px; z-index: 1; display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 6px; background: var(--cn-needs); color: #fff;
+  font: 700 12px/1 var(--cn-serif); transform: rotate(6deg);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--cn-needs) 40%, transparent);
+}
+
+/* 右侧拉线连接点（c-canvas 接 pointer 事件） */
+.cn-port {
+  position: absolute; right: -7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; padding: 0;
+  border: 1.5px solid var(--cn-border-2); border-radius: 50%; background: var(--cn-bg);
+  opacity: 0; transition: opacity 0.15s; cursor: crosshair;
+}
+.cn-node:hover .cn-port, .cn-node.is-selected .cn-port, .cn-port:focus-visible { opacity: 1; }
+.cn-port:hover { border-color: var(--cn-needs); background: var(--cn-border); }
+
+/* ── 7 类外观（形状 + 图标不同） ── */
+/* 定时流水线：左侧打孔齿轨 */
+.kind-pipeline { border-left: 4px dashed color-mix(in srgb, var(--cn-auto) 55%, transparent); padding-left: 10px; }
+.kind-pipeline .cn-ico { border-radius: 50%; }
+/* 目标：内圈双线，图标圆形靶心 */
+.kind-goal { border-radius: 18px; box-shadow: inset 0 0 0 3px var(--cn-bg), inset 0 0 0 4px var(--cn-border), var(--cn-shadow); }
+.kind-goal.st-awaiting { box-shadow: inset 0 0 0 3px var(--cn-bg), inset 0 0 0 4px var(--cn-needs-soft), 0 0 0 3px var(--cn-needs-soft); }
+.kind-goal .cn-ico { border-radius: 50%; color: var(--cn-needs); background: var(--cn-border); }
+/* 团队：身后叠两层纸 */
+.kind-team {
+  margin: 0 6px 6px 0;
+  box-shadow: 3px 3px 0 -1px var(--cn-bg), 3px 3px 0 0 var(--cn-border), 6px 6px 0 -1px var(--cn-bg), 6px 6px 0 0 var(--cn-border), var(--cn-shadow);
+}
+.kind-team.st-awaiting { box-shadow: 0 0 0 3px var(--cn-needs-soft), 4px 4px 0 0 var(--cn-border), var(--cn-shadow); }
+/* 团队在跑：叠纸之外也加左侧绿边，和在跑的会话一样一眼认出 */
+.kind-team.st-running:not(.is-selected):not(.is-workflow) {
+  box-shadow: inset var(--cn-run-w, 3px) 0 0 var(--cn-auto), 3px 3px 0 -1px var(--cn-bg), 3px 3px 0 0 var(--cn-border), 6px 6px 0 -1px var(--cn-bg), 6px 6px 0 0 var(--cn-border), var(--cn-shadow);
+}
+/* 工作流：不叠纸（不是一群人），左侧蓝色实线 + 底部分格进度条 */
+.kind-team.is-workflow { margin: 0; border-left: 3px solid var(--color-accent-blue); padding-left: 10px; box-shadow: var(--cn-shadow); }
+.kind-team.is-workflow.st-awaiting { box-shadow: 0 0 0 3px var(--cn-needs-soft), var(--cn-shadow); }
+.kind-team.is-workflow .cn-ico { color: var(--color-accent-blue); background: color-mix(in srgb, var(--color-accent-blue) 12%, transparent); }
+.cn-steps { display: flex; align-items: center; gap: 8px; }
+.cn-steps > span:last-child { flex: none; }
+.cn-steps-bar { flex: 1; display: flex; gap: 2px; height: 6px; min-width: 0; }
+.cn-step { flex: 1; border-radius: 2px; background: color-mix(in srgb, var(--cn-ink-3) 22%, transparent); }
+.cn-step.st-succeeded { background: var(--cn-auto); }
+.cn-step.st-running { background: var(--cn-auto); animation: cn-pulse 1.6s ease-in-out infinite; }
+.cn-step.st-awaiting { background: var(--cn-needs); }
+.cn-step.st-failed { background: var(--cn-down); }
+/* 待拍板：折角书签 + 朱红左缘 */
+.kind-proposal { border-left: 3px solid var(--cn-needs); border-radius: 10px 4px 10px 10px; }
+.kind-proposal::after {
+  content: ''; position: absolute; right: -1px; top: -1px; width: 14px; height: 14px; border-radius: 0 4px 0 6px;
+  background: linear-gradient(225deg, var(--cn-panel) 50%, var(--cn-border-2) 50%, var(--cn-bg) calc(50% + 1px));
+}
+.kind-proposal .cn-ico { color: var(--cn-needs); background: var(--cn-border); }
+/* 灵感：便签，微斜 + 虚线 */
+.kind-idea { width: 200px; border: 1px dashed color-mix(in srgb, var(--cn-idea) 55%, transparent); border-radius: 4px 4px 14px 4px; background: color-mix(in srgb, var(--cn-idea) 10%, var(--cn-bg)); transform: rotate(-1deg); }
+.kind-idea .cn-ico { color: var(--cn-idea); background: transparent; }
+/* 画布上的便签铺满 xyflow 外框（外框尺寸来自数据 / 拖拽改大小）；拖大过的不再截 4 行，放得下多少显示多少 */
+.react-flow__node > .kind-idea { width: 100%; height: 100%; }
+.react-flow__node > .kind-idea.is-sized { overflow: hidden; }
+.react-flow__node > .kind-idea.is-sized .cn-tail { -webkit-line-clamp: unset; }
+/* 待办便签：标题最多 2 行、正文最多 4 行，附图一行 40px 缩略图（卡高由 adapt.ts canvasNodeHeight 加高，同源） */
+.kind-idea .cn-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.kind-idea .cn-tail { white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow-wrap: anywhere; font-family: inherit; }
+.cn-thumbs { display: flex; align-items: center; gap: 4px; margin-top: 6px; height: 40px; }
+.cn-thumbs img { width: 40px; height: 40px; -o-object-fit: cover; object-fit: cover; border-radius: 6px; border: 1px solid var(--cn-border); }
+.cn-thumbs [role="status"] { width: 40px; height: 40px; padding: 0; overflow: hidden; font-size: 10px; }
+.cn-thumbs-more { font-size: 11px; color: var(--cn-ink-3); }
+/* 收件处：胶囊 */
+.kind-inbox { width: 180px; padding: 9px 16px 9px 10px; border-radius: 999px; }
+.kind-inbox .cn-tags { display: none; }
+.kind-inbox .cn-meta { margin: 2px 0 0 34px; }
+.cn-count { font: 600 11.5px/18px var(--cn-mono); color: var(--cn-ink-1); background: var(--cn-panel); border-radius: 6px; padding: 0 6px; }
+
+/* 团队成员折叠条 */
+.cn-members { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.cn-member { display: inline-flex; align-items: center; gap: 4px; max-width: 100px; height: 18px; padding: 0 6px; border-radius: 5px; background: var(--cn-panel); font-size: 11px; color: var(--cn-ink-2); }
+.cn-member span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-member .cn-dot { width: 5px; height: 5px; color: var(--cn-ink-3); }
+.cn-member.st-running .cn-dot { color: var(--cn-auto); animation: cn-pulse 1.6s ease-in-out infinite; }
+.cn-member.st-awaiting .cn-dot { color: var(--cn-needs); }
+.cn-member.st-failed .cn-dot { color: var(--cn-down); }
+.cn-member.st-succeeded .cn-dot { color: var(--cn-auto); }
+/* 折叠进卡片的在跑子任务：左侧竖线 + 横枝表达父子层级 */
+.cn-subtasks { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; margin-left: 6px; padding-left: 8px; border-left: 1px solid var(--cn-border); }
+.cn-subtask { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; height: 18px; padding: 0 6px; border-radius: 5px; background: var(--cn-panel); font-size: 11px; color: var(--cn-ink-2); }
+.cn-subtask::before { content: ''; position: absolute; left: -8px; top: 50%; width: 7px; border-top: 1px solid var(--cn-border); }
+.cn-subtask span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-subtask .cn-dot { flex: none; width: 5px; height: 5px; color: var(--cn-ink-3); }
+.cn-subtask.st-running .cn-dot { color: var(--cn-auto); animation: cn-pulse 1.6s ease-in-out infinite; }
+.cn-subtask.st-awaiting .cn-dot { color: var(--cn-needs); }
+.cn-subtask.st-failed .cn-dot { color: var(--cn-down); }
+
+@keyframes cn-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* ── 状态动效（prefers-reduced-motion 下全关，静态的绿边 / 红框 / 批印照留） ── */
+/* 在跑：左侧绿边之上叠一层慢呼吸的光边，远看也能从静止卡里分出来；只动 opacity，100 张卡也不重绘 */
+.kind-session.st-running:not(.is-selected)::before,
+.kind-pipeline.st-running:not(.is-selected)::before,
+.kind-team.st-running:not(.is-selected):not(.is-workflow)::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: inset var(--cn-run-w, 3px) 0 0 var(--cn-auto), inset calc(var(--cn-run-w, 3px) + 6px) 0 10px -6px color-mix(in srgb, var(--cn-auto) 60%, transparent);
+}
+/* 转成等你：一次性「弹一下 + 外扩光晕 + 批印落章」，约 600ms（与 CanvasNodeCard AWAITING_ALERT_MS 同源），不循环。
+   用独立的 scale 属性，不覆盖灵感卡的 rotate / 批印的 rotate */
+.cn-node.is-alerting::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; }
+/* 动画只在没要求减少动效时挂上（选择器优先级不用跟上面的 :not() 较劲） */
+@media (prefers-reduced-motion: no-preference) {
+  .kind-session.st-running::before, .kind-pipeline.st-running::before, .kind-team.st-running::before { animation: cn-breathe 2.8s ease-in-out infinite; }
+  .cn-node.is-alerting { animation: cn-alert-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+  .cn-node.is-alerting::before { animation: cn-alert-glow 0.6s ease-out forwards; }
+  .is-alerting .cn-seal { animation: cn-seal-stamp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+  .cn-live { animation: cn-live-in 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+}
+/* 在跑会话的当前一步：换行时从下往上滚入 */
+.cn-live { display: block; overflow: hidden; text-overflow: ellipsis; }
+@keyframes cn-live-in { from { transform: translateY(100%); opacity: 0; } }
+@keyframes cn-breathe { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes cn-alert-pop { 30% { scale: 1.045; } }
+@keyframes cn-alert-glow {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cn-needs) 55%, transparent); }
+  to { box-shadow: 0 0 0 16px color-mix(in srgb, var(--cn-needs) 0%, transparent); }
+}
+@keyframes cn-seal-stamp { from { scale: 1.9; opacity: 0; } 45% { scale: 0.92; opacity: 1; } }
+
+/* ── 偷看卡 ── */
+.cn-peek {
+  position: fixed; z-index: 60; width: 320px; max-height: min(420px, calc(100vh - 24px)); overflow: hidden auto;
+  padding: 12px 14px; border: 1px solid var(--cn-border); border-radius: 14px; background: var(--cn-bg);
+  box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.45), var(--cn-shadow); color: var(--cn-ink-2);
+  font-size: 12.5px; line-height: 1.5;
+  animation: cn-peek-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes cn-peek-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.cn-peek-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cn-peek-title { flex: 1; min-width: 0; font-weight: 600; color: var(--cn-ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-peek-sec { margin-top: 10px; }
+.cn-peek-label { margin-bottom: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--cn-ink-3); }
+.cn-peek-msg { display: flex; gap: 6px; padding: 4px 0; }
+.cn-peek-msg + .cn-peek-msg { border-top: 1px dashed var(--cn-border); }
+.cn-peek-who { flex: none; width: 26px; font-size: 11px; font-weight: 600; color: var(--cn-ink-3); }
+.cn-peek-msg.is-user .cn-peek-who { color: var(--cn-needs); }
+.cn-peek-text { min-width: 0; color: var(--cn-ink-1); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cn-peek-text code { padding: 0 3px; border-radius: 4px; background: var(--cn-panel); font: 11.5px var(--cn-mono); }
+.cn-peek-ask { padding: 6px 8px; border-left: 3px solid var(--cn-needs); border-radius: 6px; background: var(--cn-needs-soft); color: var(--cn-ink-1); }
+.cn-peek-tool { font-family: var(--cn-mono); font-size: 11.5px; color: var(--cn-ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-peek-tool.is-error { color: var(--cn-down); }
+.cn-peek-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.cn-peek-stat { padding: 6px 8px; border-radius: 8px; background: var(--cn-panel); }
+.cn-peek-stat b { display: block; font: 600 13px/1.3 var(--cn-mono); color: var(--cn-ink-1); }
+.cn-peek-stat span { font-size: 10.5px; color: var(--cn-ink-3); }
+.cn-peek-muted { color: var(--cn-ink-3); }
+.cn-peek-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; min-width: 0; }
+.cn-peek-row .cn-grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cn-ink-1); }
+.cn-peek-row .cn-mono { font: 11px var(--cn-mono); color: var(--cn-ink-3); }
+.cn-peek-row.st-running .cn-dot { color: var(--cn-auto); }
+.cn-peek-row.st-failed .cn-dot, .cn-peek-row.res-failed .cn-dot { color: var(--cn-down); }
+.cn-peek-row.st-awaiting .cn-dot { color: var(--cn-needs); }
+.cn-peek-row.res-partial .cn-dot { color: var(--cn-warn); }
+.cn-peek-row.res-ok .cn-dot, .cn-peek-row.st-succeeded .cn-dot { color: var(--cn-auto); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cn-node, .cn-port { transition: none; }
+  .st-running .cn-dot, .cn-member.st-running .cn-dot, .cn-subtask.st-running .cn-dot, .cn-step.st-running { animation: none; }
+  .cn-peek { animation: none; }
+}
+.cn-fav { flex: none; width: 12px; height: 12px; color: #e0a526; fill: currentColor; }
+
+/* ── 密度三档（高度与 adapt.ts CANVAS_NODE_H_COMPACT / CANVAS_NODE_H_CHIP 同源，经 --cn-h 写入） ── */
+/* compact：一行标题 + 一行状态 / 时间（流水线再加上一轮结果点） */
+.dn-compact .cn-fav, .dn-chip .cn-fav { margin-left: -2px; }
+.cn-last { flex: none; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: var(--cn-ink-3); }
+.cn-last.res-ok { background: var(--cn-auto); }
+.cn-last.res-partial { background: var(--cn-warn); }
+.cn-last.res-failed { background: var(--cn-down); }
+/* chip：单行小标签（图标 + 标题 + 相对时间） */
+.cn-node.dn-chip { padding: 7px 10px; border-radius: 10px; box-shadow: none; }
+.dn-chip .cn-head { gap: 6px; }
+.dn-chip .cn-title { font-weight: 500; }
+.cn-ago { flex: none; font: 11px var(--cn-mono); color: var(--cn-ink-3); }
+.kind-team.dn-chip { margin: 0; }
+
+/* 等你回答：卡上就地选项（行高与 adapt.ts canvasAskRows 同源：每问一行标签 + 选项每行 2 个，行高 18、间距 4） */
+.cn-asks { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; cursor: default; }
+.cn-ask { display: flex; flex-direction: column; gap: 4px; }
+.cn-ask-label { height: 18px; font-size: 11px; line-height: 18px; font-weight: 600; color: var(--cn-needs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-ask-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.cn-ask-opt {
+  min-width: 0; height: 18px; padding: 0 6px; border: 1px solid var(--cn-border); border-radius: 5px; background: var(--cn-panel);
+  font-size: 11px; line-height: 16px; color: var(--cn-ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.cn-ask-opt:hover:not(:disabled) { border-color: var(--cn-needs); }
+.cn-ask-opt.is-picked { border-color: var(--cn-needs); background: var(--cn-needs-soft); color: var(--cn-needs); font-weight: 600; }
+.cn-ask-opt:disabled { cursor: progress; opacity: 0.6; }
+.cn-tail.is-error { color: var(--cn-down); }
+
+/* 工作流有步骤等你：偷看卡接收指针，等你的步骤可点开抽屉审核 */
+.cn-peek-act { width: 100%; margin: 1px 0; padding: 4px 6px; border: 0; border-radius: 6px; background: var(--cn-needs-soft); font: inherit; text-align: left; cursor: pointer; }
+.cn-peek-act:hover, .cn-peek-act:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--cn-needs); }
+.cn-peek-act .cn-mono { color: var(--cn-needs); }
+.cn-peek-link { width: 100%; margin: 1px 0; padding: 3px 6px; border: 0; border-radius: 6px; background: none; font: inherit; text-align: left; cursor: pointer; }
+.cn-peek-link:hover, .cn-peek-link:focus-visible { outline: none; background: var(--cn-border); }
+.cn-peek-link:disabled { cursor: default; background: none; }
+
+/* ── 语义缩放（zoomTier，见 nodeDisplay.ts 阈值）：低缩放少放信息、放大标题与状态 ──
+   只改卡内排版，卡片宽高（--cn-h）不变；次要行（标签 / 摘要 / meta 文本 / 成员 / 子任务 / 就地选项 / 相对时间）全藏，
+   标题最多两行（chip / compact 一行），在跑绿边与批印同步加粗放大，远看靠它们分状态。
+   字号只做温和补偿（far 约 1.4×）：补太狠字会撑满固定卡宽，和不放大的框 / 图标比例失调。
+   高度账（far 最紧的 compact 62px）：边框 2 + 上下 3×2 → 内容 54 ≥ 标题 18×1.05 + 间距 2 + 状态 15×1.1+2.2 ≈ 39.6 */
+.cn-node.zt-mid, .cn-node.zt-far { padding-top: 3px; padding-bottom: 3px; display: flex; flex-direction: column; justify-content: center; }
+.zt-mid { --cn-zt-title: 15px; --cn-zt-chip: 13px; --cn-run-w: 5px; }
+.zt-far { --cn-zt-title: 18px; --cn-zt-chip: 15px; --cn-run-w: 6px; }
+:is(.zt-mid, .zt-far) :is(.cn-tags, .cn-tail, .cn-meta-text, .cn-model, .cn-members, .cn-subtasks, .cn-asks, .cn-ago, .cn-last) { display: none; }
+:is(.zt-mid, .zt-far) .cn-title { font-size: var(--cn-zt-title); line-height: 1.05; }
+:is(.zt-mid, .zt-far).dn-full .cn-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+:is(.zt-mid, .zt-far) .cn-meta { margin-top: 2px; }
+:is(.zt-mid, .zt-far) .cn-chip { height: auto; padding: 0.05em 0.4em; font-size: var(--cn-zt-chip); line-height: 1.1; gap: 0.25em; }
+:is(.zt-mid, .zt-far) .cn-chip .cn-dot { width: 0.4em; height: 0.4em; }
+.zt-mid .cn-seal { scale: 1.2; }
+.zt-far .cn-seal { scale: 1.4; }
+
+/* 工作分组：左侧 3px 色条（色值 = WORK_GROUP_HEX）、优先级角标、AI 自动归入标记 */
+.cn-group-bar { position: absolute; left: -1px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; pointer-events: none; }
+.cn-priority { flex: none; height: 16px; line-height: 16px; }
+.cn-head .cn-priority { margin-left: auto; }
+.cn-auto-group { flex: none; height: 16px; line-height: 16px; }
+/* 工作台自由画布：颜色全部走 app 主题 token（浅色 / 深色都可读）；动效只做反馈 */
+.workbench-canvas .react-flow {
+  --xy-background-color: var(--color-bg-primary);
+  --xy-edge-stroke: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+  --xy-edge-stroke-selected: var(--color-accent-blue);
+  --xy-selection-background-color: color-mix(in srgb, var(--color-accent-blue) 10%, transparent);
+  --xy-selection-border: 1px dashed color-mix(in srgb, var(--color-accent-blue) 70%, transparent);
+  --xy-node-boxshadow-selected: none;
+}
+
+.workbench-canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-accent-blue) 50%, transparent);
+}
+
+/* 节点卡自己画选中态与连接点；xyflow 的 Handle 只当连线锚点 */
+.workbench-canvas .react-flow__node { background: transparent; border: 0; padding: 0; }
+.workbench-canvas .wb-anchor { opacity: 0; pointer-events: none; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; }
+
+/* ── 分组框 ── */
+.wb-group {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  border: 1px dashed color-mix(in srgb, var(--color-text-muted) 45%, transparent);
+  background: color-mix(in srgb, var(--color-bg-secondary) 45%, transparent);
+  position: relative;
+}
+/* 关系家族底板：一块浅蓝底 + 左侧色条，同家族的卡一眼看出是一伙 */
+.wb-family-band {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-accent-blue) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent-blue) 28%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-accent-blue) 65%, transparent);
+}
+/* 空的自定义框：框内居中一段用途说明，不接指针（拖卡进来不被挡） */
+.wb-group-empty-hint {
+  position: absolute; inset: 34px 16px 12px; display: flex; align-items: center; justify-content: center;
+  margin: 0; text-align: center; font-size: 12px; line-height: 1.6; color: var(--color-text-muted); pointer-events: none;
+}
+.wb-group.is-selected { border-color: color-mix(in srgb, var(--color-accent-blue) 70%, transparent); }
+.wb-group.is-collapsed { background: var(--color-bg-secondary); border-style: solid; }
+/* 「待处理」：实线 + 淡红底，一眼和普通框分开 */
+.wb-group.kind-attention {
+  border: 1.5px solid color-mix(in srgb, var(--color-accent-red) 55%, transparent);
+  background: color-mix(in srgb, var(--color-accent-red) 7%, transparent);
+}
+.wb-group.kind-attention .wb-group-title { color: var(--color-accent-red); }
+/* 空的「待处理」：不报警，中性虚线细条 */
+.wb-group.kind-attention.is-empty {
+  border: 1px dashed color-mix(in srgb, var(--color-text-muted) 45%, transparent);
+  background: color-mix(in srgb, var(--color-bg-secondary) 45%, transparent);
+}
+.wb-group.kind-attention.is-empty .wb-group-title { color: var(--color-text-muted); }
+/* 「工作流」：淡蓝实线框，和团队 / 项目的虚线框分开 */
+.wb-group.kind-workflows {
+  border: 1.5px solid color-mix(in srgb, var(--color-accent-blue) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent-blue) 5%, transparent);
+}
+.wb-group.kind-workflows .wb-group-title { color: var(--color-accent-blue); }
+.wb-group.kind-attention.is-selected { border-color: color-mix(in srgb, var(--color-accent-blue) 70%, transparent); }
+/* 工作分组：分组色实线边 + 淡底，框头色条；--wg-color 由 CanvasGroupFrame 按 WORK_GROUP_HEX 注入（色板不含红，不撞「待处理」） */
+.wb-group.kind-work {
+  border: 1.5px solid color-mix(in srgb, var(--wg-color) 55%, transparent);
+  background: color-mix(in srgb, var(--wg-color) 6%, transparent);
+}
+.wb-group.kind-work .wb-group-head {
+  border-radius: 14px 14px 0 0;
+  background: color-mix(in srgb, var(--wg-color) 12%, transparent);
+}
+.wb-group.kind-work .wb-group-title { color: var(--wg-color); }
+.wb-group.kind-work.is-selected { border-color: var(--wg-color); }
+.wb-group-add { margin-left: auto; }
+.wb-group-add + .wb-group-remove { margin-left: 0; }
+.wb-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 6px;
+  cursor: grab;
+  min-width: 0;
+  /* 淡底色当「标签页」，和框里的白卡分开 */
+  border-radius: 15px 15px 0 0;
+  background: color-mix(in srgb, var(--color-text-muted) 9%, transparent);
+}
+.wb-group.is-collapsed .wb-group-head { border-radius: 15px; }
+.wb-group-head:active { cursor: grabbing; }
+.wb-group-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+/* 缩放补偿：比卡片标题（15 / 18px）再高一级；最远档摘要看不清，只留标题 */
+.wb-group.zt-mid .wb-group-title { font-size: 17px; line-height: 1.1; }
+.wb-group.zt-far .wb-group-title { font-size: 21px; line-height: 1.1; }
+/* 头部图标跟标题同步放大，避免「大字配小图标」；框头固定 GROUP_HEADER_H=34，far 按钮 28 仍放得下 */
+.wb-group.zt-mid .wb-group-btn { width: 24px; height: 24px; }
+.wb-group.zt-far .wb-group-btn { width: 28px; height: 28px; }
+.wb-group.zt-mid :is(.wb-group-btn, .wb-group-lock) svg { width: 16px; height: 16px; }
+.wb-group.zt-far :is(.wb-group-btn, .wb-group-lock) svg { width: 18px; height: 18px; }
+.wb-group.zt-mid .wb-group-summary { font-size: 13px; }
+.wb-group.zt-far .wb-group-summary { display: none; }
+.wb-group-lock { flex: none; display: inline-flex; color: var(--color-text-muted); }
+.wb-group-summary { flex: none; font-size: 11px; color: var(--color-text-muted); white-space: nowrap; }
+/* 摘要保持灰色不抢标题，有待处理时前置一个红点 */
+.wb-group-summary.is-needs::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%;
+  vertical-align: 1px; background: var(--color-accent-red);
+}
+.wb-group-input {
+  min-width: 0;
+  flex: 1;
+  height: 22px;
+  border-radius: 6px;
+  padding: 0 6px;
+  font-size: 12px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  outline: 1px solid var(--color-accent-blue);
+}
+.wb-group-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+}
+.wb-group-btn:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+.wb-group-remove, .wb-group-history { margin-left: auto; }
+.workbench-canvas .wb-group-resize-line { border-color: color-mix(in srgb, var(--color-accent-blue) 60%, transparent); }
+.workbench-canvas .wb-group-resize-handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--color-bg-primary);
+  border: 1.5px solid var(--color-accent-blue);
+}
+
+/* ── 连线 ── */
+.wb-edge { stroke: var(--xy-edge-stroke); stroke-width: 1.4; fill: none; }
+.wb-edge.kind-spawned { stroke-dasharray: 4 4; }
+.wb-edge.kind-feeds { stroke: color-mix(in srgb, var(--color-accent-green) 55%, transparent); }
+.wb-edge.kind-spawned, .wb-edge.kind-watches { stroke: color-mix(in srgb, var(--color-accent-blue) 60%, transparent); }
+.wb-edge.kind-watches { stroke-dasharray: 1 4; stroke-linecap: round; stroke-width: 1.8; }
+.wb-edge.kind-user { stroke: color-mix(in srgb, var(--color-text-secondary) 70%, transparent); stroke-width: 1.6; }
+.wb-edge.is-faded { opacity: 0.18; }
+.wb-edge.is-selected { stroke: var(--color-accent-blue); stroke-width: 2; }
+.wb-edge.is-active { stroke-dasharray: 6 5; animation: wb-edge-flow 1.2s linear infinite; }
+@keyframes wb-edge-flow { to { stroke-dashoffset: -22; } }
+.wb-edge-pulse {
+  fill: var(--color-accent-green);
+  filter: drop-shadow(0 0 3px var(--color-accent-green));
+  animation: wb-pulse-fade 1200ms ease-out forwards;
+}
+@keyframes wb-pulse-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* 拉线中的临时线 */
+.wb-connect-line path { fill: none; stroke: var(--color-accent-blue); stroke-width: 1.6; stroke-dasharray: 5 4; }
+.wb-connect-line circle { fill: var(--color-accent-blue); }
+
+/* ── 今天时间条 ── */
+.wb-timeline { display: flex; align-items: flex-start; gap: 12px; }
+.wb-timeline-label { flex: none; padding-top: 4px; font-size: 12px; color: var(--color-text-muted); }
+.wb-timeline-body { position: relative; flex: 1; min-width: 0; }
+.wb-timeline-track {
+  position: relative;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+}
+.wb-timeline-track:focus-visible { box-shadow: inset 0 0 0 2px var(--color-accent-blue); }
+.wb-timeline-future {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0 8px 8px 0;
+  background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--color-text-muted) 12%, transparent) 5px 6px);
+}
+.wb-tick {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--color-accent-green);
+}
+.wb-tick.res-partial { background: var(--color-accent-yellow); }
+.wb-tick.res-failed { background: var(--color-accent-red); }
+.wb-tick.is-running { background: var(--color-accent-blue); }
+/* 时间条右键「选一次运行」列表里的结果色点，与打点同色 */
+.wb-tick-dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; vertical-align: middle; background: var(--color-accent-green); }
+.wb-tick-dot.res-partial { background: var(--color-accent-yellow); }
+.wb-tick-dot.res-failed { background: var(--color-accent-red); }
+.wb-tick-dot.is-running { background: var(--color-accent-blue); }
+.wb-timeline-cursor {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-text-primary);
+  pointer-events: none;
+}
+.wb-timeline-cursor.is-replay { background: var(--color-accent-blue); }
+.wb-timeline-time {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 4px;
+  font: 600 10px/16px ui-monospace, monospace;
+  color: var(--color-bg-primary);
+  background: inherit;
+}
+.wb-timeline-axis { position: relative; height: 14px; margin-top: 2px; }
+.wb-timeline-axis span { position: absolute; transform: translateX(-50%); font: 10px/14px ui-monospace, monospace; color: var(--color-text-muted); }
+.wb-timeline-axis span:first-child { transform: none; }
+.wb-timeline-axis span:last-child { transform: translateX(-100%); }
+.wb-timeline-now {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-bg-primary);
+  background: var(--color-text-primary);
+}
+
+.wb-replay-tag {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--color-accent-blue);
+  background: color-mix(in srgb, var(--color-accent-blue) 12%, var(--color-bg-primary));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-blue) 40%, transparent);
+  pointer-events: none;
+}
+
+/* 聚焦标签：沿用回放标签的外观，但要能点 × */
+.wb-focus-tag { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; max-width: 60%; }
+.wb-focus-tag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-focus-tag button { cursor: pointer; line-height: 1; }
+
+/* ── 灵感节点操作条：悬停 / 选中 / 键盘聚焦时出现 ── */
+.wb-idea-actions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.react-flow__node:hover .wb-idea-actions,
+.react-flow__node.selected .wb-idea-actions,
+.wb-idea-actions:focus-within { opacity: 1; pointer-events: auto; }
+.wb-idea-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.wb-idea-actions button svg { width: 12px; height: 12px; }
+.wb-idea-actions button:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.wb-idea-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+.wb-idea-actions button:focus-visible { outline: 2px solid var(--color-accent-blue); outline-offset: 1px; }
+
+/* ── 灵感就地编辑框：盖在便签上，比卡片宽，方便补全长内容 ── */
+.wb-idea-editor {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  z-index: 20;
+  width: 320px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35), inset 0 0 0 1px var(--color-border);
+}
+.wb-idea-editor textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.wb-idea-editor textarea:focus { box-shadow: inset 0 0 0 1px var(--color-accent-blue); }
+.wb-idea-editor-bar { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.wb-idea-editor-bar span { flex: 1; font-size: 11px; color: var(--color-text-muted); }
+.wb-idea-editor-bar button {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+.wb-idea-editor-bar button:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.wb-idea-editor-bar button.is-primary { color: #fff; background: var(--color-accent-blue); }
+.wb-idea-editor-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+.wb-idea-actions .wb-idea-delete:hover:not(:disabled),
+.wb-idea-actions .wb-idea-delete.is-confirming { color: var(--color-accent-red); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-red) 50%, transparent); }
+
+/* ── 右键菜单 ── */
+/* 拉线落点就在目标卡上，悬停预览卡会同时弹出（同为 60），选择菜单压在它上面 */
+.wb-node-menu.wb-connect-choice { z-index: 70; }
+.wb-node-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 170px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25), inset 0 0 0 1px var(--color-border);
+}
+.wb-node-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+.wb-node-menu button:hover, .wb-node-menu button:focus-visible { background: var(--color-bg-hover); outline: none; }
+.wb-node-menu .wb-node-menu-danger { color: var(--color-accent-red); }
+/* 会话卡「优先级」「移到分组」子菜单项：缩进一级，当前项高亮 */
+.wb-node-menu .wb-node-menu-sub { padding-left: 22px; }
+.wb-node-menu .wb-node-menu-sub[aria-checked="true"] { color: var(--color-accent-blue); }
+/* 工作分组色板（右键菜单顶部一行） */
+.wb-node-menu .wb-color-row { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
+.wb-node-menu .wb-color-row .wb-color-swatch { width: 16px; height: 16px; flex: none; padding: 0; border-radius: 999px; }
+.wb-node-menu .wb-color-row .wb-color-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--color-bg-secondary), 0 0 0 3.5px var(--color-text-primary); }
+.wb-model-picker { width: 250px; max-height: 360px; overflow-y: auto; }
+.wb-model-picker .wb-model-item { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.wb-model-picker .wb-model-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-model-picker .wb-model-item.is-sub { padding-left: 22px; font-family: var(--font-mono, monospace); font-size: 11.5px; }
+.wb-model-picker .wb-model-item[aria-checked="true"] { color: var(--color-accent-blue); }
+.wb-model-head { padding: 4px 10px 6px; font-size: 11px; color: var(--color-text-muted); }
+
+/* 系统要求减少动效：画布内全部停（含连线流动与跑完光点） */
+@media (prefers-reduced-motion: reduce) {
+  .workbench-canvas *,
+  .workbench-canvas *::before,
+  .workbench-canvas *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .wb-edge-pulse { display: none; }
+}

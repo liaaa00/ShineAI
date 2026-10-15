@@ -1,0 +1,23 @@
+{
+  "libraryVersion": "2026.09.15",
+  "generatedAt": "2026-09-15T00:00:00.000Z",
+  "templates": [
+    {
+      "templateId": "image-prompt-studio",
+      "version": "1.0.0",
+      "title": "Image Prompt Studio — 8-Block Production Schema",
+      "category": "poster",
+      "categories": [
+        "poster",
+        "portrait",
+        "character",
+        "ui",
+        "ecommerce",
+        "ad-creative",
+        "comparison"
+      ],
+      "changelog": "1.0.0 — 首个工业级模板：8 段式提示词 schema（subject/composition/lens/lighting/color grade/material/typography/negatives）+ 金模板 + QC 清单。",
+      "source": "resources/builtin-skills/image-prompt-studio"
+    }
+  ]
+}

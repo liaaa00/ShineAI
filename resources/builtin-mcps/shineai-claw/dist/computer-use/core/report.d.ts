@@ -1,0 +1,47 @@
+import type { ProviderRouteCandidate } from '../registry.js';
+import { type ActionResult, type AppState, type AppTarget, type CanonicalReport, type CapabilityReport, type ComputerUseAction, type VerificationResult } from '../types.js';
+export declare function routeToReportSteps(candidates: ProviderRouteCandidate[]): CanonicalReport['route'];
+export declare function fallbackProviderIds(candidates: ProviderRouteCandidate[]): string[];
+export declare function canonicalSuccess(args: {
+    phase: CanonicalReport['phase'];
+    providerId?: string;
+    providerKind?: CanonicalReport['providerKind'];
+    action?: ComputerUseAction;
+    target?: AppTarget;
+    result?: ActionResult;
+    state?: AppState;
+    capabilities?: CapabilityReport[];
+    verification?: VerificationResult;
+    route?: CanonicalReport['route'];
+    warnings?: string[];
+}): CanonicalReport;
+export declare function canonicalFailure(args: {
+    phase: CanonicalReport['phase'];
+    code: string;
+    message: string;
+    providerId?: string;
+    providerKind?: CanonicalReport['providerKind'];
+    action?: ComputerUseAction;
+    target?: AppTarget;
+    result?: ActionResult;
+    state?: AppState;
+    capabilities?: CapabilityReport[];
+    verification?: VerificationResult;
+    route?: CanonicalReport['route'];
+    fallbackSuggested?: boolean;
+    fallbackProviders?: string[];
+    warnings?: string[];
+    details?: Record<string, unknown>;
+}): CanonicalReport;
+export declare function actionFailureResult(args: {
+    action: ComputerUseAction;
+    providerId?: string;
+    providerKind?: ActionResult['providerKind'];
+    code: string;
+    message: string;
+    fallbackSuggested?: boolean;
+    fallbackReason?: string;
+    verification?: VerificationResult;
+    details?: Record<string, unknown>;
+    warnings?: string[];
+}): ActionResult;

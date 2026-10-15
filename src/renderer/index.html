@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShineAI 1.0.6</title>
+    <script>
+      (function () {
+        var hash = location.hash || ''
+        if (hash.indexOf('#/session-chat-window') === 0) {
+          document.documentElement.classList.add('session-chat-transparent-window')
+        } else if (hash.indexOf('#/butler-float') === 0) {
+          document.documentElement.classList.add('butler-float-transparent-window')
+        }
+      })()
+    </script>
+    <script src="./assets/dev-storage-migration.js"></script>
+    <script type="module" crossorigin src="./assets/index-0LVJEr5c.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-qrggy75z.css">
+  <link rel="stylesheet" href="./assets/dev-appearance.css">
+  </head>
+  <body class="bg-bg-primary text-text-primary">
+    <div id="root"></div>
+    <div id="dev-edition-banner" style="position:fixed;bottom:4px;right:8px;z-index:2147483640;font-size:11px;pointer-events:none;color:#8ab4f8;background:#101827d9;padding:3px 8px;border-radius:5px">本地开发版 1.0.6 · 全局外观版 7 · 已移除官方云服务 · AI 使用自备服务商</div>
+
+  </body>
+</html>

@@ -1,0 +1,14 @@
+import { aN as createLucideIcon } from "./index-0LVJEr5c.js";
+/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const SkipBack = createLucideIcon("SkipBack", [
+  ["polygon", { points: "19 20 9 12 19 4 19 20", key: "o2sva" }],
+  ["line", { x1: "5", x2: "5", y1: "19", y2: "5", key: "1ocqjk" }]
+]);
+export {
+  SkipBack as default
+};

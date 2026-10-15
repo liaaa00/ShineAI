@@ -1,0 +1,56 @@
+#dev-background{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;background:var(--color-bg-primary);overflow:hidden}
+html[data-dev-background="on"] #dev-background{display:block}
+.dev-background-media,.dev-background-mask{position:absolute;inset:0}
+.dev-background-content{width:100%;height:100%;object-fit:var(--dev-background-fit);object-position:var(--dev-background-position);filter:var(--dev-background-filter,none);opacity:var(--dev-background-strength)}
+.dev-background-content[hidden]{display:none}
+.dev-background-mask{background:var(--color-bg-primary);opacity:var(--dev-background-mask)}
+#root{position:relative;z-index:1}
+/* One window-wide material, instead of stacking tint on every nested pane.
+   Structural panels are transparent; all cards, controls and popups follow
+   the shared material adapter. Base theme tokens remain HEX for theme consumers. */
+html[data-dev-material="on"] #root{background:color-mix(in srgb,var(--color-bg-primary) var(--dev-surface-opacity),transparent)}
+html[data-dev-material="on"] body,
+html[data-dev-material="on"] [data-appearance-surface]{background:transparent!important}
+/* Hide covered UI only; the one window-wide media stage remains visible. */
+html[data-dev-material="on"] [data-dev-occluded]{clip-path:var(--dev-occlusion-clip)!important}
+html[data-dev-material="on"] [data-dev-occlusion-front]{z-index:var(--dev-occlusion-z,1)!important}
+html[data-dev-material="on"] .monaco-editor,
+html[data-dev-material="on"] .monaco-editor-background,
+html[data-dev-material="on"] .monaco-editor .margin,
+html[data-dev-material="on"] .xterm,
+html[data-dev-material="on"] .xterm-viewport{background:transparent!important}
+
+/* XYFlow draws both a wrapper and an SVG background. Keep the dot pattern,
+   but let the board's single material layer transmit the shared wallpaper. */
+html[data-dev-material="on"] #root .react-flow,
+html[data-dev-material="on"] #root .react-flow__background{background:transparent!important;--xy-background-color:transparent;--xy-background-color-props:transparent}
+.dev-appearance{border:1px solid var(--color-border-primary,var(--color-bg-tertiary));border-radius:16px;padding:22px;color:var(--color-text-primary);background:var(--color-bg-secondary)}
+.dev-appearance-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:20px}
+.dev-appearance h3{font-size:17px;font-weight:650;margin:0 0 6px}.dev-appearance p{font-size:12px;line-height:1.7;color:var(--color-text-secondary);margin:0}
+.dev-appearance-layout{display:grid;grid-template-columns:minmax(240px,1.15fr) minmax(230px,1fr);gap:24px}
+.dev-preview{position:relative;isolation:isolate;min-height:275px;display:flex;border:1px solid var(--color-border-primary,var(--color-bg-tertiary));border-radius:12px;overflow:hidden;background:var(--color-bg-primary)}
+.dev-preview-picture{position:absolute;inset:0;z-index:-2;background-image:radial-gradient(ellipse at 70% 20%,#c0d5d9,transparent 65%),linear-gradient(130deg,#3e6179,#768c9b 45%,#bdafa7);opacity:var(--dev-background-strength,.8);filter:var(--dev-background-filter,none)}
+.dev-preview-mask{position:absolute;inset:0;z-index:-1;background:var(--color-bg-primary);opacity:var(--dev-background-mask,.3)}
+.dev-preview aside{width:85px;padding:18px 10px;display:flex;flex-direction:column;gap:19px;font-size:10px;background:color-mix(in srgb,var(--color-bg-secondary) var(--dev-surface-opacity,65%),transparent)}
+.dev-preview aside b{font-size:11px}.dev-preview main{flex:1;min-width:0;padding:20px 16px;background:color-mix(in srgb,var(--color-bg-primary) var(--dev-surface-opacity,65%),transparent)}
+.dev-preview small{font-size:10px;color:var(--color-text-secondary)}.dev-preview h4{font-size:15px;font-weight:600;margin:12px 0 18px;line-height:1.5}
+.dev-preview-message{font-size:11px;line-height:1.8}.dev-preview code{display:block;background:var(--color-bg-secondary);padding:9px;border-radius:5px;font-size:10px;margin:13px 0;color:var(--color-text-secondary)}
+.dev-preview-input{display:flex;justify-content:space-between;font-size:11px;padding:10px;border-radius:7px;background:var(--color-bg-secondary);color:var(--color-text-secondary)}
+.dev-preview[data-enabled="false"] .dev-preview-picture,.dev-preview[data-enabled="false"] .dev-preview-mask{display:none}.dev-preview[data-enabled="false"] aside,.dev-preview[data-enabled="false"] main{background:var(--color-bg-primary)}
+.dev-media-info{font-size:12px;margin:13px 0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
+.dev-buttons,.dev-presets{display:flex;gap:8px;flex-wrap:wrap}.dev-appearance button,.dev-appearance select{border:1px solid var(--color-border-primary,var(--color-bg-tertiary));border-radius:7px;background:var(--color-bg-primary);padding:7px 10px;font-size:12px;color:var(--color-text-primary);cursor:pointer}
+.dev-appearance button:hover{background:var(--color-bg-tertiary)}.dev-appearance button:disabled{opacity:.5;cursor:default}.dev-appearance button:focus-visible,.dev-appearance input:focus-visible,.dev-appearance select:focus-visible{outline:2px solid var(--color-accent-primary,#7193b8);outline-offset:3px}
+.dev-appearance .dev-help{margin-top:12px;font-size:11px}.dev-mode-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:12px}.dev-mode-row span{font-size:11px;color:var(--color-text-secondary)}
+.dev-slider{display:block;margin-top:13px}.dev-slider>span{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}.dev-slider output{font-size:11px;color:var(--color-text-secondary);font-variant-numeric:tabular-nums}.dev-slider input{width:100%;accent-color:var(--color-accent-primary,#7193b8);cursor:pointer}
+.dev-fit{display:flex;justify-content:space-between;gap:8px;margin-top:12px;align-items:center;font-size:12px}.dev-appearance input[type=checkbox]{accent-color:var(--color-accent-primary,#7193b8);vertical-align:middle}.dev-appearance-heading label{font-size:12px;white-space:nowrap}
+.dev-position{margin-top:9px}.dev-appearance-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}.dev-appearance-footer [role=status]{font-size:11px;color:var(--color-text-secondary)}.dev-appearance-footer [data-error="true"]{color:var(--color-error,#df6666)}
+@media(max-width:900px){.dev-appearance-layout{grid-template-columns:1fr}.dev-appearance-heading{align-items:flex-start}.dev-preview{min-height:240px}}
+
+/* Inline backgrounds keep their original values for React and theme consumers. */
+html[data-dev-material="on"]{--dev-readable-muted:color-mix(in srgb,var(--color-text-primary) 80%,var(--color-text-secondary))}
+html[data-dev-material="on"] [data-dev-inline-background]:not([data-appearance-surface]):not(#root){background-color:color-mix(in srgb,var(--dev-inline-background) calc(var(--dev-material-scale) * 100%),transparent)!important}
+html[data-dev-material="on"] [data-dev-inline-gradient]{background-image:var(--dev-inline-gradient)!important}
+html[data-dev-material="on"] :is(button,[role="button"],a):is([class*="text-white"],[class*="text-bg-primary"]){color:var(--color-text-primary)!important}
+/* Floating panels share the adjustable blur, including zero for original video.
+   The wallpaper remains the same window-wide image under this glass. */
+html[data-dev-material="on"] :is([data-canvas-drawer],.cn-peek,[data-drawer-more-menu],[role="dialog"],.fixed[class*="z-"],.absolute[class*="z-40"],.absolute[class*="z-50"],[style*="backdrop-filter"]){backdrop-filter:var(--dev-panel-filter)!important}

@@ -1,0 +1,40 @@
+{
+  "name": "shineai-dev",
+  "version": "1.0.6",
+  "private": true,
+  "main": "out/main/bootstrap.cjs",
+  "description": "ShineAI local desktop development workspace reconstructed from a published client",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package:win": "npm run check && node scripts/package-windows.mjs",
+    "test:installer": "node scripts/installer-smoke.mjs",
+    "test:installer-payload": "node scripts/installer-payload-smoke.mjs",
+    "test": "node --test test",
+    "verify": "node scripts/verify.mjs",
+    "check": "npm test && npm run build && npm run verify && npm run smoke && npm run smoke:cloud && npm run smoke:codex && npm run smoke:local",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:brand": "node scripts/brand-smoke.mjs",
+    "smoke:cloud": "node scripts/cloud-smoke.mjs",
+    "smoke:market": "node scripts/market-smoke.mjs",
+    "smoke:skills": "node scripts/skill-install-smoke.mjs",
+    "smoke:reliability": "node scripts/reliability-smoke.mjs",
+    "smoke:appearance": "node scripts/appearance-smoke.mjs",
+    "smoke:appearance-board": "node scripts/appearance-board-smoke.mjs",
+    "smoke:appearance-surfaces": "node scripts/appearance-surfaces-smoke.mjs",
+    "smoke:appearance-occlusion": "node scripts/appearance-occlusion-smoke.mjs",
+    "smoke:claude": "node scripts/claude-effort-smoke.mjs",
+    "smoke:codex": "node scripts/codex-provider-smoke.mjs",
+    "smoke:local": "node scripts/local-runtime-smoke.mjs",
+    "smoke:file-links": "node scripts/file-links-smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "e2e:local": "node scripts/e2e.mjs --local-only",
+    "start": "npm run build && node scripts/launch.mjs",
+    "restore:dependencies": "python scripts/restore-dependencies.py",
+    "decode:upstream": "node scripts/decode-main.mjs && node scripts/apply-dev-transforms.mjs",
+    "verify:baseline": "python scripts/verify-baseline.py",
+    "verify:reproducible": "node scripts/verify-reproducibility.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
