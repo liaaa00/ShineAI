@@ -10,49 +10,72 @@ export function patchFileLinksMain(source) {
 }
 export function patchFileLinksRenderer(source) {
   source=source.replace(/\r\n/g,'\n');
-  source=once(source,
-    '  const hint2 = resolvePathWithSession(filePath);\n  return resolveLocalPathHint(hint2, getSessionBase());',
-    String.raw`  // Absolute paths identify an exact item; never substitute a same-named project file.
-  if (/^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\")) return { path: filePath, kind: "file" };
+  const resolverStart = source.indexOf('async function resolveChatFilePath(filePath) {');
+  const resolverEnd = source.indexOf('\n}', resolverStart) + 2;
+  if (resolverStart < 0 || resolverEnd < resolverStart) throw new Error('Chat path resolver layout changed');
+  source = source.slice(0, resolverStart) + String.raw`async function resolveChatFilePath(filePath) {
+  // Absolute paths identify an exact item; never substitute a same-named file.
+  if (/^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\")) {
+    const base = getSessionBase();
+    const key = normalizePathKey(filePath), baseKey = normalizePathKey(base);
+    if (baseKey && (key === baseKey || key.startsWith(baseKey + "/"))) {
+      const index = await loadIndex(base), relative = toRelativeOfBase(filePath, base);
+      if (!relative || index && [...index.byRelativePath.keys()].some(p => p.startsWith(relative + "/"))) return { path: filePath, kind: "directory" };
+    }
+    return { path: filePath, kind: "file" };
+  }
   const hint2 = resolvePathWithSession(filePath);
-  return resolveLocalPathHint(hint2, getSessionBase());`);
-  source=once(source, 'const FilePathLink = ({ display, filePath, line: line2, col }) => {', `async function revealChatLocation(filePath) {
+  return resolveLocalPathHint(hint2, getSessionBase());
+}` + source.slice(resolverEnd);
+  // Replace bounded components so both the upstream and previously patched
+  // renderer converge on the same implementation; repeated runs are identical.
+  const start = source.indexOf('const FilePathLink = ');
+  const end = source.indexOf('FilePathLink.displayName', start);
+  if (start < 0 || end < start) throw new Error('FilePathLink layout changed');
+  const oldHelper = source.indexOf('async function revealChatLocation(');
+  const newHelper = source.indexOf('async function openChatLocation(');
+  const helperStart = oldHelper >= 0 ? oldHelper : newHelper >= 0 ? newHelper : start;
+  source = source.slice(0, helperStart) + `async function openChatLocation(filePath, line, col, directory = false) {
   const sessionId = useSessionStore.getState().selectedSessionId;
-  return revealChatFileLocation({
-    path: filePath,
-    resolve: resolveChatFilePath,
-    context: sessionId ? { sessionId } : void 0,
+  return openChatFile({
+    path: filePath, line, col,
+    resolve: async path => { const target = await resolveChatFilePath(path); return directory ? { ...target, kind: "directory" } : target; },
+    files: useFileManagerStore.getState(),
+    revealDirectory: path => window.shineAI.fileManager.showInFolder(path, sessionId ? { sessionId } : void 0),
     notify: (message, kind) => useUIStore.getState().showToast(message, kind)
   });
 }
-const FilePathLink = ({ display, filePath, line: line2, col }) => {`);
-  if (!source.includes('import { revealChatFileLocation }')) source='import { revealChatFileLocation } from "./dev-file-links.js";\n'+source;
-  const start=source.indexOf('const FilePathLink = '),end=source.indexOf('FilePathLink.displayName',start);
-  let component=source.slice(start,end);
-  const a=component.indexOf('  const handleClick = '), b=component.indexOf('  const resolved = ',a);
-  if (a<0 || b<a) throw new Error('FilePathLink click layout changed');
-  component=component.slice(0,a)+`  const handleClick = reactExports.useCallback(() => revealChatLocation(filePath), [filePath]);
-`+component.slice(b);
-  component=component.replace('title: isPreview ? t2("markdown.filePathPreviewTitle", { path: resolved }) : t2("markdown.filePathOpenTitle", { path: resolved }),', 'title: `在文件夹中显示：${resolved}`,');
-  source=source.slice(0,start)+component+source.slice(end);
-  // Markdown links and inline file chips share the same behavior. Retain the
-  // existing URI parser so web links, anchors and rejected schemes stay intact.
-  const anchorStart=source.indexOf('  a({ href, children: children2, className, onClick, rel, ...rest }) {',source.indexOf('const createMarkdownComponents ='));
-  const anchorEnd=source.indexOf('  table({ node:',anchorStart);
-  let anchor=source.slice(anchorStart,anchorEnd);
-  const blockStart=anchor.indexOf('      const st2 = '),blockEnd=anchor.indexOf('      if (decision === "prevent")',blockStart);
-  if (!anchor.includes('      const reveal = path2 => { void revealChatLocation(path2); };')) {
-    if (blockStart<0 || blockEnd<blockStart) throw new Error('Markdown anchor click layout changed');
-    anchor=anchor.slice(0,blockStart)+`      const reveal = path2 => { void revealChatLocation(path2); };
+const FilePathLink = ({ display, filePath, line: line2, col }) => {
+  const handleClick = reactExports.useCallback(() => openChatLocation(filePath, line2, col), [filePath, line2, col]);
+  const resolved = resolvePathWithSession(filePath);
+  return jsxRuntimeExports.jsx("button", {
+    type: "button",
+    onClick: handleClick,
+    title: \`在侧边栏打开：\${resolved}\`,
+    className: "markdown-filepath-link markdown-inline-code cursor-pointer text-accent-blue hover:text-accent-blue/80 hover:underline",
+    children: display
+  });
+};
+` + source.slice(end);
+  source = source.replace('import { revealChatFileLocation } from "./dev-file-links.js";\n', '');
+  if (!source.includes('import { openChatFile }')) source = 'import { openChatFile } from "./dev-file-links.js";\n' + source;
+  // Retain URI parsing, safe external-link handling and blocked schemes.
+  const anchorStart = source.indexOf('  a({ href, children: children2, className, onClick, rel, ...rest }) {', source.indexOf('const createMarkdownComponents ='));
+  const anchorEnd = source.indexOf('  table({ node:', anchorStart);
+  if (anchorStart < 0 || anchorEnd < anchorStart) throw new Error('Markdown anchor layout changed');
+  let anchor = source.slice(anchorStart, anchorEnd);
+  const blockStart = ['      const st2 = ', '      const reveal = ', '      const openLocal = '].map(token => anchor.indexOf(token)).filter(i => i >= 0).sort((a,b) => a-b)[0];
+  const blockEnd = anchor.indexOf('      if (decision === "prevent")', blockStart);
+  if (blockStart == null || blockEnd < blockStart) throw new Error('Markdown anchor click layout changed');
+  anchor = anchor.slice(0, blockStart) + `      const openLocal = (path, line, col) => { void openChatLocation(path, line, col, /[/\\\\]$/.test(href || "")); };
       const decision = handleMarkdownLinkClick({
         href,
         cwd: getSessionBase(),
-        modifier: isPrimaryModifierPressed(event2) || event2.button === 1,
-        openers: { openFileInTab: reveal, openHtmlPreview: reveal, openPath: reveal, openExternal: openExternalLink }
+        modifier: false,
+        openers: { openFileInTab: openLocal, openHtmlPreview: openLocal, openPath: openLocal, openExternal: openExternalLink }
       });
-`+anchor.slice(blockEnd);
-  }
-  anchor=anchor.replace('        href,\n        ...rest,','        href,\n        title: resolveMarkdownHref(href, getSessionBase()).kind === "local" ? "在文件夹中显示" : void 0,\n        ...rest,');
-  source=source.slice(0,anchorStart)+anchor+source.slice(anchorEnd);
-  return source;
+` + anchor.slice(blockEnd);
+  anchor = anchor.replace('        title: resolveMarkdownHref(href, getSessionBase()).kind === "local" ? "在文件夹中显示" : void 0,\n', '');
+  if (!anchor.includes('title: resolveMarkdownHref')) anchor = anchor.replace('        href,\n        ...rest,', '        href,\n        title: resolveMarkdownHref(href, getSessionBase()).kind === "local" ? "在侧边栏打开文件；文件夹在资源管理器中打开" : void 0,\n        ...rest,');
+  return source.slice(0, anchorStart) + anchor + source.slice(anchorEnd);
 }

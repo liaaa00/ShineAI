@@ -1,4 +1,4 @@
-import { revealChatFileLocation } from "./dev-file-links.js";
+import { openChatFile } from "./dev-file-links.js";
 import { mountAppearancePanel, appearanceTerminalTheme, bindTerminalAppearance } from "./dev-appearance.js";
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index-DKmSc9lP.js","./message-circle-question-BIsODvjB.js","./crosshair-a6pbCt7b.js","./bell-dot-B1Fi_jDO.js","./index-BLRI4LJh.css"])))=>i.map(i=>d[i]);
 const scriptRel = function detectScriptRel() {
@@ -152855,8 +152855,16 @@ function resolvePathWithSession(filePath) {
   return `${base.replace(/[/\\]$/, "")}${sep}${clean}`;
 }
 async function resolveChatFilePath(filePath) {
-  // Absolute paths identify an exact item; never substitute a same-named project file.
-  if (/^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\")) return { path: filePath, kind: "file" };
+  // Absolute paths identify an exact item; never substitute a same-named file.
+  if (/^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\")) {
+    const base = getSessionBase();
+    const key = normalizePathKey(filePath), baseKey = normalizePathKey(base);
+    if (baseKey && (key === baseKey || key.startsWith(baseKey + "/"))) {
+      const index = await loadIndex(base), relative = toRelativeOfBase(filePath, base);
+      if (!relative || index && [...index.byRelativePath.keys()].some(p => p.startsWith(relative + "/"))) return { path: filePath, kind: "directory" };
+    }
+    return { path: filePath, kind: "file" };
+  }
   const hint2 = resolvePathWithSession(filePath);
   return resolveLocalPathHint(hint2, getSessionBase());
 }
@@ -152872,30 +152880,26 @@ function chatFileOpenAction(path2) {
   if (/\.mdx?$/i.test(path2) || isLocalImageFilePath(path2)) return "preview";
   return void 0;
 }
-async function revealChatLocation(filePath) {
+async function openChatLocation(filePath, line, col, directory = false) {
   const sessionId = useSessionStore.getState().selectedSessionId;
-  return revealChatFileLocation({
-    path: filePath,
-    resolve: resolveChatFilePath,
-    context: sessionId ? { sessionId } : void 0,
+  return openChatFile({
+    path: filePath, line, col,
+    resolve: async path => { const target = await resolveChatFilePath(path); return directory ? { ...target, kind: "directory" } : target; },
+    files: useFileManagerStore.getState(),
+    revealDirectory: path => window.shineAI.fileManager.showInFolder(path, sessionId ? { sessionId } : void 0),
     notify: (message, kind) => useUIStore.getState().showToast(message, kind)
   });
 }
 const FilePathLink = ({ display, filePath, line: line2, col }) => {
-  const { t: t2 } = useTranslation("commandPalette");
-  const handleClick = reactExports.useCallback(() => revealChatLocation(filePath), [filePath]);
+  const handleClick = reactExports.useCallback(() => openChatLocation(filePath, line2, col), [filePath, line2, col]);
   const resolved = resolvePathWithSession(filePath);
-  const isPreview = /\.html?$/i.test(resolved) || chatFileOpenAction(resolved) === "preview";
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "button",
-    {
-      type: "button",
-      onClick: handleClick,
-      title: `在文件夹中显示：${resolved}`,
-      className: "markdown-filepath-link markdown-inline-code cursor-pointer text-accent-blue hover:text-accent-blue/80 hover:underline",
-      children: display
-    }
-  );
+  return jsxRuntimeExports.jsx("button", {
+    type: "button",
+    onClick: handleClick,
+    title: `在侧边栏打开：${resolved}`,
+    className: "markdown-filepath-link markdown-inline-code cursor-pointer text-accent-blue hover:text-accent-blue/80 hover:underline",
+    children: display
+  });
 };
 FilePathLink.displayName = "FilePathLink";
 function processTextFilePaths(text2) {
@@ -153022,12 +153026,12 @@ const createMarkdownComponents = (variant, decisionTable) => ({
         event2.preventDefault();
         event2.stopPropagation();
       }
-      const reveal = path2 => { void revealChatLocation(path2); };
+      const openLocal = (path, line, col) => { void openChatLocation(path, line, col, /[/\\]$/.test(href || "")); };
       const decision = handleMarkdownLinkClick({
         href,
         cwd: getSessionBase(),
-        modifier: isPrimaryModifierPressed(event2) || event2.button === 1,
-        openers: { openFileInTab: reveal, openHtmlPreview: reveal, openPath: reveal, openExternal: openExternalLink }
+        modifier: false,
+        openers: { openFileInTab: openLocal, openHtmlPreview: openLocal, openPath: openLocal, openExternal: openExternalLink }
       });
       if (decision === "prevent") {
         event2.preventDefault();
@@ -153038,7 +153042,7 @@ const createMarkdownComponents = (variant, decisionTable) => ({
       "a",
       {
         href,
-        title: resolveMarkdownHref(href, getSessionBase()).kind === "local" ? "在文件夹中显示" : void 0,
+        title: resolveMarkdownHref(href, getSessionBase()).kind === "local" ? "在侧边栏打开文件；文件夹在资源管理器中打开" : void 0,
         ...rest,
         rel: isExternal ? "noopener noreferrer" : rel,
         className: joinClassNames$1("markdown-link break-all", className),

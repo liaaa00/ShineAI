@@ -1,15 +1,17 @@
-> 历史开发记录：下文记录此前版本的检查，产品称呼已统一为 ShineAI；历史安装包、哈希、路径与测试结果不代表本轮改名后重新生成或验收。当前状态见 `SHINEAI-DELIVERY-2026-10-15.md`。
-
 # 会话文件路径
 
-会话正文中的本地 Markdown 链接、自动识别的行内路径和纯文本路径，点击后在系统资源管理器中定位文件；文件夹直接打开。提示文字为“在文件夹中显示”。网页链接保持原有行为，代码块保持可复制文本。
+会话正文中的本地 Markdown 链接、自动识别的行内路径和纯文本路径，点击后在软件内置文件面板打开。聊天保留在左侧，文件显示在右侧；已有文件面板时复用该面板。带行号的链接跳转到对应行。提示文字为“在侧边栏打开”。
 
-相对路径以当前会话的工作目录或 worktree 为基准。绝对路径精确定位，不会替换成项目中同名文件。文件不存在时提示可能尚未生成、已移动或属于示例路径，不打开其他目录。
+文本、代码和 Markdown 沿用已有编辑器；图片、PDF 和 Office 文档沿用已有预览能力。HTML 和脚本点击时显示源码，不执行内容。无法读取或不支持的文件在文件面板显示原因，不调用系统程序兜底。重复点击同一路径复用标签页，并保留未保存的修改。
 
-沿用 `file-manager:show-in-folder` 的来源和文件读取权限校验；校验后由 `src/main/extensions/reveal-local-path.cjs` 检查文件是否存在，目录调用 `shell.openPath`，普通文件调用 `shell.showItemInFolder`。不会启动被引用的文档、脚本或可执行文件。渲染层的 `dev-file-links.js` 统一调用并显示错误。
+相对路径以当前会话的工作目录或 worktree 为基准。绝对路径保持精确，不会被项目中同名文件替换。Windows 路径和 file URL 统一分隔符，避免同一文件因链接形式不同而重复打开标签。
 
-`scripts/patch-file-links.mjs` 保存恢复补丁，重复执行保持相同内容；`apply-dev-transforms.mjs` 已接入。`npm run smoke:file-links` 使用隔离用户配置，在实际会话中点击相对路径、中文空格路径、file URL、行号链接、脚本文件、文件夹和不存在的路径；系统打开动作在最后一层拦截，核对目标路径及动作，避免批量打开资源管理器。另检查危险协议不调用系统接口、网页入口与代码块保持原行为。专项不调用模型。
+沿用 `useFileManagerStore.openFileInTab/openFileAtLine`、`useFileTabStore` 和 `useUIStore.openViewBesideMain("files")`，通过现有带权限校验的文件读取 IPC 获取内容。没有新增特权接口或放宽访问权限。可读入口为 `src/renderer/assets/dev-file-links.js`；`scripts/patch-file-links.mjs` 保存恢复补丁，重复执行保持相同内容，`apply-dev-transforms.mjs` 已接入。
 
-2026-10-15：完整 `npm run check` 通过 51 项单元测试和所有运行检查；工程版文件路径专项通过 10 项。本次修改不包含在此前发布的 859 MiB 安装包中，后续重新打包时自动加入该专项验收。
+文件夹链接保留在系统资源管理器打开的行为；通过项目索引识别目录，显式以斜杠结尾的链接支持空目录。网页链接保持原有行为，危险协议被阻止，代码块保持可复制文本。
 
-实际安装目录 `E:/AI/ShineAI` 已更新 4 个构建文件，旧文件备份为 `artifacts/installed-update-1792068293265`。同一专项对真实安装程序的 10 项检查全部通过，报告为 `artifacts/installed-file-links-report.json`。日常窗口正常退出后已重新启动。构建指纹为 `59c6954fad7488085f4fa79e98efe66ac8d0e77afc39929e7895819ce0161723`。
+`npm run smoke:file-links` 在隔离用户配置中实际点击链接，验证右侧可见的文件内容与左侧聊天并存、行号定位、图片解码、中文空格路径、file URL、未保存修改、HTML/脚本不执行、目录行为、缺失文件错误、危险协议、网页链接和代码块。系统打开动作在最后一层拦截，专项不调用模型。报告为 `artifacts/file-links-report.json`，界面截图为 `artifacts/file-links-side-panel.png`。
+
+本次修改面向工程开发版。此前安装包和安装目录的验证记录不代表已包含本次功能，需要重新打包才会进入新的安装包。
+
+2026-10-15 验证：`npm run check` 全部通过（56 项单元测试、构建与完整性检查、界面启动、云服务移除、Codex 协议测试、本地运行检查）；`npm run smoke:file-links` 的 15 项界面检查全部通过。恢复补丁可从本轮修改前的源码重现当前 renderer，且重复执行不改变结果。
