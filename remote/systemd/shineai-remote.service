@@ -1,0 +1,28 @@
+[Unit]
+Description=ShineAI mobile collaboration service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=shineai-remote
+Group=shineai-remote
+WorkingDirectory=/opt/shineai/app/remote/server
+EnvironmentFile=/etc/shineai-remote.env
+ExecStart=/opt/shineai/runtime/node/bin/node /opt/shineai/app/remote/server/index.cjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/shineai-remote
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

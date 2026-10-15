@@ -8,6 +8,11 @@ const { createRemoteServer } = createRequire(import.meta.url)('../remote/server/
 const data = path.join(root, '.test-data', 'remote-e2e-' + Date.now());
 fs.mkdirSync(data, {recursive:true});
 const report = {date:new Date().toISOString(),checks:{},errors:[],scope:'Real Electron desktop + mobile-sized browser + local relay + actual Claude CLI against a local fixture. No user credentials or paid model requests.'};
+const publicUrl = process.env.SHINEAI_REMOTE_E2E_URL;
+const owner = publicUrl ? process.env.SHINEAI_REMOTE_E2E_USER : 'remote-owner';
+const password = publicUrl ? process.env.SHINEAI_REMOTE_E2E_PASSWORD : 'local-fixture-password-12345';
+const reportName = publicUrl ? 'remote-public' : 'remote';
+if(publicUrl) { assert.ok(owner && password,'Public relay test requires owner credentials'); report.scope='Real Electron desktop + mobile-sized browser + deployed HTTPS relay + actual Claude CLI against a local model fixture. No paid model requests.';report.target=new URL(publicUrl).origin; }
 let app, page, phone, remote, server, sessionId, privateId, initialCommandId, mockRequests = 0, activeLongRequests = 0, completedLongRequests = 0;
 const model = http.createServer((request,response)=>{
   let body=''; request.on('data',chunk=>body+=chunk); request.on('end',()=>{
@@ -39,10 +44,14 @@ async function openPhone(url) {
   phone.on('request',request=>{if(request.method()==='POST' && /\/messages$/.test(request.url())){try{initialCommandId ||= JSON.parse(request.postData()).commandId;}catch{}}});
 }
 try {
-  const reserve=http.createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const port=reserve.address().port;await new Promise(r=>reserve.close(r));
-  const url='http://127.0.0.1:'+port;
-  remote=await createRemoteServer({directory:path.join(data,'relay'),publicUrl:url,username:'remote-owner',password:'local-fixture-password-12345',heartbeatMs:1000});server=remote.server;
-  await new Promise(r=>server.listen(port,'127.0.0.1',r));await new Promise(r=>model.listen(0,'127.0.0.1',r));
+  let url=publicUrl;
+  if(!url){
+    const reserve=http.createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const port=reserve.address().port;await new Promise(r=>reserve.close(r));
+    url='http://127.0.0.1:'+port;
+    remote=await createRemoteServer({directory:path.join(data,'relay'),publicUrl:url,username:owner,password,heartbeatMs:1000});server=remote.server;
+    await new Promise(r=>server.listen(port,'127.0.0.1',r));
+  }
+  await new Promise(r=>model.listen(0,'127.0.0.1',r));
   ({app,page}=await openTestApp(path.join(data,'desktop'),{auth:19561,meeting:18361}));
   app.process().stderr.on('data',chunk=>fs.appendFileSync(path.join(root,'artifacts/remote-runtime.log'),chunk));
   page.on('pageerror',e=>report.errors.push(e.message));
@@ -59,7 +68,7 @@ try {
   const create=async (name,workingDirectory=workspace)=>{const result=await page.evaluate(config=>window.shineAI.session.create(config),{name,workingDirectory,workspaceId:project.workspaceId,model:'claude-opus-5-5',providerId:'remote-fixture',worktreeEnabled:false,supervisorMode:false,missionMode:false});assert.ok(result.success,JSON.stringify(result));return result.sessionId||result.session?.id||result.id;};
   sessionId=await create('手机协同 · 开发会话');privateId=await create('不共享的私密会话',privateWorkspace);
   await openPhone(url);
-  await phone.locator('#username').fill('remote-owner');await phone.locator('#password').fill('local-fixture-password-12345');await phone.getByRole('button',{name:/进入工作台/}).click();
+  await phone.locator('#username').fill(owner);await phone.locator('#password').fill(password);await phone.getByRole('button',{name:/进入工作台/}).click();
   await phone.locator('#workspace-view').waitFor({state:'visible'});await phone.getByRole('button',{name:'＋ 连接电脑'}).click();
   await phone.waitForFunction(()=>document.querySelector('#pair-code').textContent.length===10);const code=await phone.locator('#pair-code').textContent();
   await page.getByRole('button',{name:'手机协同',exact:true}).click();
@@ -75,7 +84,7 @@ try {
   await phone.locator('#prompt').fill('Reply SHINEAI_REMOTE_READY without using tools.');await phone.getByRole('button',{name:'发送到电脑 ↑'}).click();
   await phone.locator('#messages').getByText(/SHINEAI_REMOTE_READY ·/).waitFor({timeout:90000});
   assert.ok((await page.evaluate(id=>window.shineAI.session.getConversation(id),sessionId)).some(m=>m.role==='assistant'&&JSON.stringify(m.content).includes('SHINEAI_REMOTE_READY')));passed('phoneToDesktopCliAndReplySync');
-  await phone.screenshot({path:path.join(root,'artifacts/remote-mobile.png')});
+  await phone.screenshot({path:path.join(root,`artifacts/${reportName}-mobile.png`)});
   assert.equal(await phone.evaluate(()=>Boolean(window.development||window.shineAI||window.require)),false);passed('mobileHasNoDesktopPrivileges');
   await phone.locator('#prompt').fill('LONG_REMOTE_TASK Reply slowly without tools.');await phone.getByRole('button',{name:'发送到电脑 ↑'}).click();
   const longDeadline=Date.now()+30000;
@@ -108,5 +117,5 @@ try {
 }
 finally{
   if(app)await app.close();if(remote)await remote.close();model.closeAllConnections();await new Promise(r=>model.close(r));
-  fs.writeFileSync(path.join(root,'artifacts/remote-e2e-report.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
+  fs.writeFileSync(path.join(root,`artifacts/${reportName}-e2e-report.json`),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));
 }

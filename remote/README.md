@@ -20,7 +20,9 @@ npm run smoke:remote
 
 ## 部署到自己的服务器
 
-需要域名、支持 HTTPS/WebSocket 的反向代理，以及能运行 Docker 的服务器。服务器不安装完整 Electron，也不复制电脑的项目或模型凭证。
+需要公网 HTTPS 地址、支持 WebSocket 的反向代理，以及能运行 Docker 的服务器。服务器不安装完整 Electron，也不复制电脑的项目或模型凭证。
+
+没有域名时，也可以通过支持 ACME profiles 的 Caddy 为固定公网 IPv4 申请 Let's Encrypt 短期证书，直接使用 `https://公网IP`。配置示例见 `remote/Caddyfile.ip.example`，需要开放 TCP 80/443，并保持代理与证书数据卷持续运行以自动续期。首次签发成功不代表已经验证后续续期。
 
 1. 克隆本工程。复制 `remote/.env.example` 为 `remote/.env`，填写真实的 HTTPS 地址、用户名和新密码。该文件已排除在 Git 之外。
 2. 在工程根目录运行：
@@ -61,4 +63,18 @@ docker compose --env-file remote/.env -f remote/compose.yaml up -d
 - 服务端不持久化会话正文，但在内存中暂存请求与结果；因此服务器管理员和运行环境属于信任边界。当前未实现端到端加密，不把 TLS 等同于服务器看不到会话内容。
 - 登录使用 HttpOnly / SameSite Cookie，HTTPS 下带 Secure；写操作校验 Origin 和 CSRF。设备凭证只保留散列，电脑使用系统安全存储保存凭证。公网地址强制 HTTPS，回环 HTTP 仅用于本机测试。
 
-本轮验证以本地服务器和模拟模型为准；真实域名、TLS 代理、手机系统后台限制及公网断线环境还需要在实际部署后验收。
+本地专项测试使用模拟模型；实际 HTTPS 部署可使用下文的公网验收模式。已部署实例的结果见 [公网部署记录](../docs/REMOTE-DEPLOYMENT-2026-10-15.md)。手机系统后台限制、移动网络切换和真实模型仍需分别体验验证。
+
+## 使用独立 Node 服务
+
+无法拉取 Node 容器镜像时，可安装独立 Node 20+，使用 `remote/systemd/shineai-remote.service`。示例约定代码位于 `/opt/shineai/app`，Node 可执行文件为 `/opt/shineai/runtime/node/bin/node`，程序使用普通系统用户 `shineai-remote`，数据目录为该用户独占的 `/var/lib/shineai-remote`。
+
+系统管理员准备 `/etc/shineai-remote.env`（权限 `600`），设置 `NODE_ENV=production`、`HOST=127.0.0.1`、`PORT=7940`、`SHINEAI_REMOTE_DATA_DIR=/var/lib/shineai-remote`，以及前述 `SHINEAI_REMOTE_PUBLIC_URL`、`SHINEAI_REMOTE_USER`、`SHINEAI_REMOTE_PASSWORD`。安装锁定服务器依赖后，将单元文件安装到 `/etc/systemd/system/`，执行 `systemctl daemon-reload` 和 `systemctl enable --now shineai-remote`；HTTPS 代理转发到回环端口即可。
+
+检查运行状态使用 `systemctl status shineai-remote`，日志使用 `journalctl -u shineai-remote`。备份和离线改密前先停止该服务；不要同时启动两个进程写同一状态目录。
+
+## 对已部署服务进行验收
+
+配置环境变量 `SHINEAI_REMOTE_E2E_URL`、`SHINEAI_REMOTE_E2E_USER`、`SHINEAI_REMOTE_E2E_PASSWORD` 后运行 `npm run smoke:remote`，会改为连接实际部署的服务，在独立桌面测试数据中创建并绑定一台测试电脑。成功结束时撤销测试设备；失败后应在设备列表中清理遗留测试绑定。此模式会真实访问所指定服务，但模型请求仍使用本地模拟服务。
+
+公网验收报告和截图输出为 `artifacts/remote-public-e2e-report.json`、`artifacts/remote-public-mobile.png`。不要把登录凭据写入脚本、命令行参数或提交到版本库。

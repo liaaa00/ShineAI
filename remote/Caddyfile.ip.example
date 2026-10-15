@@ -1,0 +1,16 @@
+# Replace both example IPs with the server's public IPv4 address.
+# Requires Caddy with ACME profiles support and inbound TCP 80/443.
+{
+    admin 127.0.0.1:2021
+    default_sni 203.0.113.10
+}
+https://203.0.113.10 {
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            profile shortlived
+            disable_tlsalpn_challenge
+        }
+    }
+    reverse_proxy 127.0.0.1:7940
+}
