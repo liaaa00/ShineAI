@@ -21,6 +21,9 @@ try {
   // Exercise the old installed bridge as well as the renamed engineering build.
   await page.evaluate(()=>{if(!window.shineAI)window.shineAI=window.spectrAI;});
   page.on('pageerror',e=>report.errors.push(e.message));await completeOnboarding(page);
+  const remoteEditorRequests=[];
+  page.on('request',request=>{if(/^https?:/.test(request.url())&&/monaco|\/vs\/loader/.test(request.url()))remoteEditorRequests.push(request.url());});
+  await page.route('https://cdn.jsdelivr.net/npm/monaco-editor@**',route=>route.abort());
   const created=await page.evaluate(rootPath=>window.shineAI.workspace.create({name:'File link smoke',rootPath,repos:[{repoPath:rootPath,name:'fixture',isPrimary:true}]}),workspace);
   assert.equal(created.success,true);
   await app.evaluate(({shell,ipcMain})=>{
@@ -94,6 +97,9 @@ try {
     if(label==='查看 SKILL.md') {
       const editor=page.locator('.monaco-editor:visible, textarea[readonly]:visible').last();
       await editor.waitFor();
+      await page.locator('.monaco-editor:visible').waitFor();
+      assert.equal(remoteEditorRequests.length,0,'The editor must load from packaged assets');
+      report.checks.editorLoadedLocally=true;
       await page.waitForFunction(()=>[...document.querySelectorAll('.monaco-editor .view-lines,textarea[readonly]')].some(e=>e.getBoundingClientRect().width>0&&(e.value||e.textContent).replace(/\s/g,' ').includes('Target line two')));
       const chat=await page.getByRole('link',{name:label,exact:true}).boundingBox(),pane=await editor.boundingBox();
       assert.ok(chat&&pane&&pane.x>=chat.x+chat.width,'File editor must be beside the still visible chat');

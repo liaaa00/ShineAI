@@ -1,3 +1,4 @@
+import { createEditorRuntime } from "./dev-editor-runtime.js";
 import { openChatFile } from "./dev-file-links.js";
 import { mountAppearancePanel, appearanceTerminalTheme, bindTerminalAppearance } from "./dev-appearance.js";
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./index-DKmSc9lP.js","./message-circle-question-BIsODvjB.js","./crosshair-a6pbCt7b.js","./bell-dot-B1Fi_jDO.js","./index-BLRI4LJh.css"])))=>i.map(i=>d[i]);
@@ -245974,7 +245975,7 @@ var index = {
 };
 var config$2 = {
   paths: {
-    vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs"
+    vs: new URL("../monaco/vs", import.meta.url).href
   }
 };
 function curry$1(fn) {
@@ -246052,8 +246053,7 @@ function makeCancelable(promise) {
   var wrappedPromise = new Promise(function(resolve, reject) {
     promise.then(function(val) {
       return hasCanceled_ ? reject(CANCELATION_MESSAGE) : resolve(val);
-    });
-    promise["catch"](reject);
+    }, reject);
   });
   return wrappedPromise.cancel = function() {
     return hasCanceled_ = true;
@@ -246165,7 +246165,13 @@ var wrapperPromise = new Promise(function(resolve, reject) {
 var loader = {
   config: config$1,
   init,
-  __getMonacoInstance
+  __getMonacoInstance,
+  reset() {
+    if (__getMonacoInstance()?.editor) return;
+    window.require?.reset?.();
+    setState({ isInitialized: false, monaco: null });
+    wrapperPromise = new Promise((resolve, reject) => setState({ resolve, reject }));
+  }
 };
 var le = { wrapper: { display: "flex", position: "relative", textAlign: "initial" }, fullWidth: { width: "100%" }, hide: { display: "none" } }, v$1 = le;
 var ae = { container: { display: "flex", height: "100%", width: "100%", justifyContent: "center", alignItems: "center" } }, Y = ae;
@@ -264252,32 +264258,9 @@ function FileTabs() {
     )
   ] });
 }
-let initPromise = null;
-function normalizeErrorMessage(error2) {
-  if (error2 instanceof Error && error2.message) return error2.message;
-  if (typeof error2 === "string" && error2.trim()) return error2;
-  return instance.t("storesWorkflowStore:errors.unknown");
-}
-async function ensureMonacoReady(timeoutMs = 5e3) {
-  if (!initPromise) {
-    initPromise = Promise.resolve(loader.init()).catch((error2) => {
-      initPromise = null;
-      throw error2;
-    });
-  }
-  let timeoutHandle = null;
-  const timeoutPromise = new Promise((_3, reject) => {
-    timeoutHandle = setTimeout(() => {
-      reject(new Error(instance.t("storesWorkflowStore:monacoLoader.initTimeout", { ms: timeoutMs })));
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([initPromise, timeoutPromise]);
-  } catch (error2) {
-    throw new Error(normalizeErrorMessage(error2));
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  }
+const localEditorRuntime = createEditorRuntime(loader);
+function ensureMonacoReady(timeoutMs = 5000, onSlow) {
+  return localEditorRuntime.ready(timeoutMs, onSlow);
 }
 const MAX_PREFIX_CHARS = 2e3;
 const MAX_SUFFIX_CHARS = 1e3;
@@ -264646,6 +264629,7 @@ function CodeViewer({ tabId }) {
   const previewScrollRef = reactExports.useRef(null);
   const [runtimeMode, setRuntimeMode] = reactExports.useState("initializing");
   const [fallbackMessage, setFallbackMessage] = reactExports.useState(null);
+  const [editorLoadAttempt, setEditorLoadAttempt] = reactExports.useState(0);
   const [editorMounted, setEditorMounted] = reactExports.useState(false);
   const applyTheme2 = reactExports.useCallback((monaco) => {
     const style2 = getComputedStyle(document.documentElement);
@@ -264711,7 +264695,11 @@ function CodeViewer({ tabId }) {
     setEditorMounted(false);
     setRuntimeMode("initializing");
     setFallbackMessage(null);
-    ensureMonacoReady(MONACO_INIT_TIMEOUT_MS).then((monaco) => {
+    ensureMonacoReady(MONACO_INIT_TIMEOUT_MS, () => {
+      if (cancelled) return;
+      setRuntimeMode("fallback");
+      setFallbackMessage("编辑器加载较慢，完成后会自动恢复。");
+    }).then((monaco) => {
       if (cancelled) return;
       monacoRef.current = monaco;
       applyTheme2(monaco);
@@ -264725,7 +264713,7 @@ function CodeViewer({ tabId }) {
     return () => {
       cancelled = true;
     };
-  }, [tab2?.id, tab2?.path, tab2?.isLoading, tab2?.error, tab2?.previewMode, needsMonaco, applyTheme2]);
+  }, [tab2?.id, tab2?.path, tab2?.isLoading, tab2?.error, tab2?.previewMode, needsMonaco, applyTheme2, editorLoadAttempt]);
   reactExports.useEffect(() => {
     if (!tab2?.pendingReveal) return;
     const { lineNumber, column: column2 } = tab2.pendingReveal;
@@ -264890,7 +264878,8 @@ function CodeViewer({ tabId }) {
       return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { "data-appearance-surface": "shell", className: "h-full flex flex-col bg-bg-primary", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-3 py-2 border-b border-border text-xs", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-text-primary", children: t2("editor.plainTextReadOnly") }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-muted truncate ml-4", title: fallbackMessage || void 0, children: fallbackMessage || t2("editor.initFailedFallback") })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-muted truncate ml-4", title: fallbackMessage || void 0, children: fallbackMessage || t2("editor.initFailedFallback") }),
+          jsxRuntimeExports.jsx("button", { type: "button", onClick: () => setEditorLoadAttempt(value => value + 1), className: "shrink-0 ml-2 text-accent-blue hover:underline", children: "重试编辑器" })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "textarea",
@@ -264916,6 +264905,7 @@ function CodeViewer({ tabId }) {
         onMount: handleEditorMount,
         theme: "shineai-dynamic",
         options: {
+          readOnly: !tab2.isEditable,
           fontSize: 13,
           fontFamily: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
           minimap: { enabled: false },

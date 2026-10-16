@@ -123,3 +123,4 @@ console.log('Applied isolated development configuration, local identity and sand
 removeOfficialCloud();
 await import('./patch-appearance.mjs').then(module => module.patchAppearance());
 await import('./patch-workbench.mjs').then(module => module.patchWorkbench());
+await import('./patch-editor-runtime.mjs').then(module => module.patchEditorRuntimeFiles());
