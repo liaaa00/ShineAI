@@ -1,0 +1,24 @@
+/* The welcome area and the input occupy separate regions, even on a short
+   window or with large system fonts. Only the welcome area scrolls. */
+.workbench-canvas [data-canvas-onboarding="empty"] {
+  inset: 0 0 var(--workbench-composer-space, 240px);
+  padding: 20px 24px;
+  overflow: auto;
+  align-items: safe center;
+  pointer-events: none;
+}
+.workbench-canvas [data-canvas-onboarding="empty"] > div {
+  flex-shrink: 0;
+  margin: auto;
+  pointer-events: auto;
+}
+.workbench-canvas [data-canvas-hint] {
+  top: 12px;
+  bottom: auto;
+  max-width: min(420px, calc(100% - 40px));
+  max-height: calc(100% - var(--workbench-composer-space, 240px) - 24px);
+  overflow: auto;
+}
+.workbench-canvas [data-canvas-background-model-hint] {
+  margin-bottom: 10px;
+}

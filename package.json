@@ -26,6 +26,7 @@
     "smoke:codex": "node scripts/codex-provider-smoke.mjs",
     "smoke:local": "node scripts/local-runtime-smoke.mjs",
     "smoke:file-links": "node scripts/file-links-smoke.mjs",
+    "smoke:workbench-startup": "node scripts/workbench-startup-smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
     "e2e:local": "node scripts/e2e.mjs --local-only",
     "start": "npm run build && node scripts/launch.mjs",

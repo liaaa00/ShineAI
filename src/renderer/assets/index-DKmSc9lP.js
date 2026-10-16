@@ -1,3 +1,4 @@
+import { bindWorkbenchLayout } from "./dev-workbench.js";
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./TerminalDockPanel-2hrQHTSz.js","./index-0LVJEr5c.js","./index-qrggy75z.css","./KnowledgeDockPanel-DsA1k2lc.js"])))=>i.map(i=>d[i]);
 import { bM as ts$1, bN as childrenIndex, bO as resolveScheduleGoalIds, bP as isScheduledGoal, bQ as scheduledGoalNextRunAt, bR as describeCron, bS as isGoalLineActive, bT as isGoalAbandoned, bU as isGoalClosed, bV as sessionStepText, bW as navigateToSessionForChat, c as useSessionStore, bX as useSchedulerStore, bY as openWorkspaceSurface, bZ as navigateToSession, b_ as useWorkflowStore, b$ as useProposalStore, c0 as useGoalStore, d as useTeamStore, u as useTranslation, j as jsxRuntimeExports, r as reactExports, c1 as useWorkGroupStore, c2 as PRIORITY_HEX, c3 as WorkGroupDot, c4 as useUIStore, c5 as create, c6 as getDriveModeLockState, c7 as getExecutionModeLockState, c8 as executionModeOfWho, c9 as Select, ca as pickExpertDisplayName, cb as getVisibleWorkflowTemplates, cc as listRolePresets, cd as ListTodo, ce as CalendarClock, cf as Repeat, cg as Play, ch as ChevronDown, ci as reactDomExports, cj as GitBranch, ck as Users, aI as Bot, cl as MessageSquare, az as Lock, cm as useCurrentPlan, cn as NOVICE_HERO_DRAFT_KEY, co as useWorkGroupComposerStore, cp as injectMainSessionExpertInstruction, cq as toExpertMentionSelection, X, cr as Plus, cs as Flag, ct as PenLine, cu as NoviceHeroScreen, cv as NewGoalDialog, cw as focusOnCanvasWhenReady, cx as SquareTerminal, b as useSettingsStore, aj as getSessionById, cy as useFileManagerStore, cz as Inbox, cA as Stamp, cB as Target, cC as Workflow, cD as useProviders, aF as Star, cE as useSessionWorkGroup, cF as PriorityBadge, cG as WORK_GROUP_HEX, cH as AutoGroupBadge, cI as ChatImage, cJ as ChevronRight, aD as cn, cK as useReactFlow, cL as index, cM as SelectionMode, cN as Background, cO as BackgroundVariant, cP as useWorkbenchGoalsView, cQ as Maximize, cR as SquareDashedMousePointer, cS as LayoutGrid, cT as FolderPlus, cU as ListChecks, cV as Compass, cW as Eye, cX as WandSparkles, cY as Clock3, cZ as CircleHelp, aE as Search, al as Pin, c_ as useWorkbenchDockStore, c$ as Ellipsis, d0 as Check, d1 as openGoalsView, d2 as useStore, d3 as NodeResizer, aG as History, d4 as getBezierPath, d5 as BaseEdge, d6 as Pencil, d7 as Tag, d8 as Trash2, d9 as Handle, da as Position, db as ChevronLeft, dc as shouldShowPendingPermission, dd as getActiveInteractiveActivity, de as l3ShouldYieldToUser, df as isInteractiveActivityExpired, dg as buildSourcePathCandidatesFromLocator, dh as useFileTabStore, K as instance, di as LoaderCircle, ay as RefreshCw, aC as ExternalLink, dj as useShellTerminalStore, dk as ShellTerminalView, dl as MarkdownRenderer, dm as openProduct, dn as inferProductKind, dp as toPdfPreviewSrc, dq as OfficePreviewPane, dr as isPdfPath, ds as previewImage, dt as openExternalLink, du as EMPTY_ATTACHMENT_TEXTAREA_PAYLOAD, dv as AskUserQuestionPanel, dw as AttachmentTextarea, dx as parseMessageContentWithImages, dy as extractLocalFilePaths, dz as inferProductKind$1, p as useButlerStore, dA as selectL3Guard, dB as useConversation, dC as useSessionGoalTitle, dD as getActiveReplySuggestions, dE as DeleteConfirmDialog, am as ConversationView, dF as buildTurnDurationMetaMap, dG as MessageImages, dH as formatMessageTime, dI as formatExactTime, dJ as MessageBubble, dK as deriveGoalTitle, dL as openAdvancedScheduler, aV as Settings2, dM as useNeedsHumanStore, dN as mergeSessionTokens, dO as splitTeamTasks, dP as isLeaderRoleName, dQ as TeamMessageFlow, dR as getTeamTaskStatusMeta, dS as buildNodeRuntimeData, dT as getReviewContent, dU as RejectReasonForm, dV as getReworkTargets, dW as NodeResultView, dX as isTopLevelListSession, dY as ConfirmDialog, dZ as useStoreApi, d_ as registerCanvasFocus, d$ as navigateToProposalTarget, e0 as applyNodeChanges, e1 as SessionShareDialog, e2 as createDerivedSession, e3 as ensureProviders, e4 as peekProviders, e5 as findFocusNode, e6 as CANVAS_MIN_W, e7 as DOCK_PANELS, e8 as canDockPanelHere, e9 as ArrowLeftRight, n as Maximize2, ea as openDockPanelFullscreen, eb as BrowserPaneHost, ec as acquireEmbeddedBrowserSuppression, ed as dragDockWidth, bh as __vitePreload, ee as focusOnCanvas, ef as indexGoalsBySession, eg as startWorkGroupSync, eh as useGoalsSync, ei as goalsBridge, ej as loadWorkbenchGoalScope, ek as mergeGoalLists, el as describeSchedule, em as getFirstQuestionText, en as isAgentChildSession, eo as isButlerGoalSessionConfig, ep as groupSessionsByProject, eq as getSessionProjectRoot, er as normalizeDirectoryKey, es as getShortPath, et as ReactFlowProvider } from "./index-0LVJEr5c.js";
 import MessageCircleQuestion from "./message-circle-question-BIsODvjB.js";
@@ -3056,7 +3057,7 @@ function BackgroundModelHint() {
     } catch {
     }
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-canvas-background-model-hint": true, className: "pointer-events-none absolute bottom-3 right-5 z-10 flex max-w-[30%] justify-end", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "status", className: "pointer-events-auto flex items-start gap-2 rounded-lg bg-bg-secondary/95 py-1.5 pl-2.5 pr-1 text-[11px] leading-relaxed text-text-muted shadow-lg ring-1 ring-inset ring-border", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-canvas-background-model-hint": true, className: "pointer-events-auto flex w-full justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "status", className: "pointer-events-auto flex items-start gap-2 rounded-lg bg-bg-secondary/95 py-1.5 pl-2.5 pr-1 text-[11px] leading-relaxed text-text-muted shadow-lg ring-1 ring-inset ring-border", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "min-w-0 flex-1", children: t2("canvas.onboarding.backgroundModel.text") }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "button",
@@ -4909,7 +4910,8 @@ function canvasNode(node, data, hidden, prev) {
 function buildFlowNodes(model, view, prev = /* @__PURE__ */ new Map()) {
   const groupsById = new Map(model.groups.map((g) => [g.id, g]));
   const bands = familyBands(model);
-  const out = model.groups.map((g) => groupNode(g, model.summaries[g.id] ?? null, bands.get(g.id) ?? [], prev.get(g.id)));
+  const visibleGroups = model.nodes.length ? model.groups : model.groups.filter(g => g.kind === "user" || g.kind === "work");
+  const out = visibleGroups.map((g) => groupNode(g, model.summaries[g.id] ?? null, bands.get(g.id) ?? [], prev.get(g.id)));
   for (const n of model.nodes) {
     const group = groupsById.get(n.groupId);
     const lit = view.replay ? view.replay.lit[n.id] : void 0;
@@ -8134,11 +8136,7 @@ function openInboxTarget(target) {
   else void shell?.openPath?.(target);
 }
 function readHintOpen() {
-  try {
-    return localStorage.getItem(HINT_KEY) !== "1";
-  } catch {
-    return true;
-  }
+  return false; // Detailed help opens on demand, never over the startup screen.
 }
 function writeHintDismissed(dismissed) {
   try {
@@ -9008,6 +9006,7 @@ function CanvasBoard({ model, layout, ticks, replayAt: replayAt2, layoutLoaded, 
   };
   const drawerOpen = drawerKindOf(openNode) !== null || historyGroup !== null || summaryGroup !== null;
   const drawerWidth = useDrawerWidthStore((s) => s.width);
+  reactExports.useEffect(() => bindWorkbenchLayout(stageRef.current, composerRef.current), []);
   return /* @__PURE__ */ jsxRuntimeExports.jsx(CanvasActionsContext.Provider, { value: actions, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(CanvasNowContext.Provider, { value: now, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { "data-appearance-surface": "canvas", className: "flex h-full min-h-0 flex-col bg-bg-primary", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 px-5 pb-2 pt-4", children: [
@@ -9066,8 +9065,7 @@ function CanvasBoard({ model, layout, ticks, replayAt: replayAt2, layoutLoaded, 
           onPaneContextMenu,
           onNodeDoubleClick,
           overlay: /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            !replay && /* @__PURE__ */ jsxRuntimeExports.jsx(CanvasOnboarding, { nodes: model.nodes, onLocate: locate2, onShowGuide: showHint }),
-            !replay && /* @__PURE__ */ jsxRuntimeExports.jsx(BackgroundModelHint, {}),
+            !replay && (model.nodes.length > 0 || !model.groups.some(g => g.kind === "user" || g.kind === "work")) && /* @__PURE__ */ jsxRuntimeExports.jsx(CanvasOnboarding, { nodes: model.nodes, onLocate: locate2, onShowGuide: showHint }),
             replay && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "wb-replay-tag", role: "status", children: t2("canvas.timeline.replaying") }),
             focusNode && !replay && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "wb-replay-tag wb-focus-tag", role: "status", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: t2("canvas.focus.tag", { title: focusNode.title }) }),
@@ -9082,7 +9080,7 @@ function CanvasBoard({ model, layout, ticks, replayAt: replayAt2, layoutLoaded, 
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: dismissHint, "aria-label": t2("canvas.hintDismiss"), title: t2("canvas.hintDismiss"), className: "shrink-0 rounded p-0.5 hover:bg-bg-hover hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "h-3 w-3", "aria-hidden": true }) })
             ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4", style: drawerOpen ? { paddingRight: drawerWidth + 16 } : void 0, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: composerRef, className: "pointer-events-auto w-full max-w-2xl", children: /* @__PURE__ */ jsxRuntimeExports.jsx(CanvasComposer, { onPlaceNode, onCreateIdea, onIdeaDispatched, getDefaultSpawnAt: viewportCenter, replyTarget: drawerKindOf(openNode) === "session" ? openNode?.title : null }) }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4", style: drawerOpen ? { paddingRight: drawerWidth + 16 } : void 0, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: composerRef, className: "pointer-events-auto w-full max-w-2xl", "data-canvas-composer": true, children: jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [!replay && jsxRuntimeExports.jsx(BackgroundModelHint, {}), jsxRuntimeExports.jsx(CanvasComposer, { onPlaceNode, onCreateIdea, onIdeaDispatched, getDefaultSpawnAt: viewportCenter, replyTarget: drawerKindOf(openNode) === "session" ? openNode?.title : null })] }) }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(CanvasDrawer, { node: openNode, onClose: closeDrawer, onNodeAction: onMenuAction }),
             historyGroup && historyKeyOf && /* @__PURE__ */ jsxRuntimeExports.jsx(GroupHistoryDrawer, { group: historyGroup, groupKeyOf: historyKeyOf, onClose: closeDrawer }, historyGroup.id),
             summaryGroup && summary && /* @__PURE__ */ jsxRuntimeExports.jsx(WorkGroupSummaryDrawer, { group: summaryGroup, range: summary.range, onRange: (range) => setSummary({ groupId: summaryGroup.id, range }), onClose: closeDrawer }, summaryGroup.id),

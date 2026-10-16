@@ -120,3 +120,4 @@ fs.writeFileSync(html, htmlCode);
 console.log('Applied isolated development configuration, local identity and sandbox transforms');
 removeOfficialCloud();
 await import('./patch-appearance.mjs').then(module => module.patchAppearance());
+await import('./patch-workbench.mjs').then(module => module.patchWorkbench());

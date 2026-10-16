@@ -13,6 +13,9 @@ export async function completeOnboarding(page) {
 }
 export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082 }, executablePath) {
   const env = { ...process.env, SHINEAI_DEV_USER_DATA_DIR: dataDir, SHINEAI_LOCAL_AUTH_PORT: String(ports.auth), SHINEAI_MEETING_GATEWAY_PORT: String(ports.meeting) };
+  // Explicit legacy-install tests must also isolate the former development
+  // edition's profile and ports; never fall through to the user's live data.
+  if (executablePath) Object.assign(env, { SPECTRAI_DEV_USER_DATA_DIR: dataDir, SPECTRAI_LOCAL_AUTH_PORT: String(ports.auth), SPECTRAI_MEETING_GATEWAY_PORT: String(ports.meeting) });
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await _electron.launch({ executablePath: executablePath || path.join(root, '.runtime/electron/electron.exe'), args: executablePath ? [] : [root], cwd: executablePath ? path.dirname(executablePath) : root, env, timeout: 120000 });
   try {
@@ -30,7 +33,7 @@ export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082
       await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!page) throw new Error('Main renderer did not open');
-    await page.waitForFunction(() => window.development?.getRuntimeInfo && window.shineAI?.session && document.querySelector('#root')?.children.length, undefined, { timeout: 120000 });
+    await page.waitForFunction(() => window.development?.getRuntimeInfo && (window.shineAI || window.spectrAI)?.session && document.querySelector('#root')?.children.length, undefined, { timeout: 120000 });
     return { app, page };
   } catch (error) { await app.close(); throw error; }
 }
