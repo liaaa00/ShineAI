@@ -27,6 +27,7 @@
     "smoke:local": "node scripts/local-runtime-smoke.mjs",
     "smoke:file-links": "node scripts/file-links-smoke.mjs",
     "smoke:editor": "node scripts/editor-runtime-smoke.mjs",
+    "smoke:notifications": "node scripts/task-notifications-smoke.mjs",
     "smoke:workbench-startup": "node scripts/workbench-startup-smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
     "e2e:local": "node scripts/e2e.mjs --local-only",

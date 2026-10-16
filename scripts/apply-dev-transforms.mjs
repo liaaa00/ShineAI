@@ -124,3 +124,4 @@ removeOfficialCloud();
 await import('./patch-appearance.mjs').then(module => module.patchAppearance());
 await import('./patch-workbench.mjs').then(module => module.patchWorkbench());
 await import('./patch-editor-runtime.mjs').then(module => module.patchEditorRuntimeFiles());
+await import('./patch-task-notifications.mjs').then(module => module.patchTaskNotificationFiles());

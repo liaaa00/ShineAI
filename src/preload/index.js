@@ -1,5 +1,16 @@
 "use strict";
 const electron = require("electron");
+// Buffer navigation until the main React shell subscribes.
+const taskNavigationListeners = new Set();
+let pendingTaskNavigation = null;
+electron.ipcRenderer.on("butler:navigate-session", (_event, sessionId) => {
+  if (typeof sessionId !== "string" || !sessionId) return;
+  if (!taskNavigationListeners.size) pendingTaskNavigation = sessionId;
+  else {
+    pendingTaskNavigation = null;
+    for (const callback of taskNavigationListeners) callback(sessionId);
+  }
+});
 const __devPreloadInfo = electron.ipcRenderer.sendSync("dev:preload-info");
 if (!__devPreloadInfo) throw new Error("Development preload origin was rejected");
 // Sandboxed preload: unused i18next side effect removed.
@@ -3588,9 +3599,15 @@ electron.contextBridge.exposeInMainWorld("shineAI", {
     navigateToSession: (sessionId) => electron.ipcRenderer.invoke(IPC.BUTLER_NAVIGATE_SESSION, sessionId),
     /** 主窗口 renderer 监听：主进程请求跳转到指定会话 */
     onNavigateSession: (callback) => {
-      const listener = (_event, sessionId) => callback(sessionId);
-      electron.ipcRenderer.on(IPC.BUTLER_NAVIGATE_SESSION, listener);
-      return () => electron.ipcRenderer.removeListener(IPC.BUTLER_NAVIGATE_SESSION, listener);
+      taskNavigationListeners.add(callback);
+      if (pendingTaskNavigation) {
+        const sessionId = pendingTaskNavigation;
+        pendingTaskNavigation = null;
+        queueMicrotask(() => {
+          if (taskNavigationListeners.has(callback)) callback(sessionId);
+        });
+      }
+      return () => taskNavigationListeners.delete(callback);
     }
   },
   // ==================== 团队空间（org:*） ====================
