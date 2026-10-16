@@ -4069,6 +4069,7 @@ electron.contextBridge.exposeInMainWorld("api", {
 });
 
 electron.contextBridge.exposeInMainWorld("development", {
+  chatFiles: { prepare: (path, context) => electron.ipcRenderer.invoke("dev:chat-file:prepare", { path, context }) },
   getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
   getServiceAccess: () => electron.ipcRenderer.invoke("dev:service-access"),
   appearance: {

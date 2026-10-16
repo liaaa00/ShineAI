@@ -6,9 +6,11 @@ import { patchClaudeEffort } from './patch-claude-effort.mjs';
 import { patchLocalResponsiveness, patchRuntimePorts } from './patch-local-responsiveness.mjs';
 import { patchSkillMarketMain, patchSkillMarketRenderer } from './patch-skill-market.mjs';
 import { patchReliabilityMain, patchReliabilityRenderer } from './patch-reliability.mjs';
-import { patchFileLinksMain, patchFileLinksRenderer } from './patch-file-links.mjs';
+import { patchFileLinksMain, patchFileLinksRenderer, patchFileLinksPreload } from './patch-file-links.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const mainFile = path.join(root, 'src/main/index.js');
+const fileLinksPreload = path.join(root, 'src/preload/index.js');
+fs.writeFileSync(fileLinksPreload, patchFileLinksPreload(fs.readFileSync(fileLinksPreload, 'utf8')));
 let main = fs.readFileSync(mainFile, 'utf8');
 function once(source, from, to, label) {
   if (source.includes(to)) return source;

@@ -15,8 +15,11 @@ fs.writeFileSync(path.join(workspace,'pixel.png'),Buffer.from('iVBORw0KGgoAAAANS
 const report={date:new Date().toISOString(),executable:executable||'project Electron',checks:{},errors:[],scope:'Real rendered chat links open actual file contents beside the conversation through existing validated file IPC; no model calls. Native shell intercepted at its final layer.'};
 const backups=[];let app,page;
 try {
-  for(const scheme of ['shineai-dev','claudeops-dev']){const key='HKCU\\Software\\Classes\\'+scheme,backup=path.join(data,scheme+'.reg');try{execFileSync('reg.exe',['export',key,backup,'/y'],{stdio:'ignore',windowsHide:true});backups.push({key,backup});}catch{backups.push({key});}}
+  for(const scheme of ['shineai-dev','spectrai-dev','claudeops-dev']){const key='HKCU\\Software\\Classes\\'+scheme,backup=path.join(data,scheme+'.reg');try{execFileSync('reg.exe',['export',key,backup,'/y'],{stdio:'ignore',windowsHide:true});backups.push({key,backup});}catch{backups.push({key});}}
   ({app,page}=await openTestApp(data,{auth:19475,meeting:18245},executable));
+  assert.equal(path.resolve((await page.evaluate(()=>window.development.getRuntimeInfo())).userData),path.resolve(data));
+  // Exercise the old installed bridge as well as the renamed engineering build.
+  await page.evaluate(()=>{if(!window.shineAI)window.shineAI=window.spectrAI;});
   page.on('pageerror',e=>report.errors.push(e.message));await completeOnboarding(page);
   const created=await page.evaluate(rootPath=>window.shineAI.workspace.create({name:'File link smoke',rootPath,repos:[{repoPath:rootPath,name:'fixture',isPrimary:true}]}),workspace);
   assert.equal(created.success,true);
@@ -136,6 +139,62 @@ try {
   report.checks.webLinksUnchanged=true;
   assert.equal(await page.locator('pre .markdown-filepath-link').count(),0);
   report.checks.codeBlocksUnchanged=true;
+  // A persisted session is essential: synthetic IDs fall back to legacy read
+  // permissions and cannot reproduce the user's restricted-session failure.
+  const sessionResult=await page.evaluate(workingDirectory=>window.shineAI.session.create({name:'File preview permission fixture',providerId:'codex',workingDirectory,directoryAccessMode:'extended',worktreeEnabled:false}),workspace);
+  assert.equal(sessionResult.success,true,JSON.stringify(sessionResult));
+  const realSessionId=sessionResult.sessionId||sessionResult.session?.id||sessionResult.id;
+  assert.ok(realSessionId);
+  const externalDir=path.join(root,'.test-data','external-preview-'+Date.now()),outsideFile=path.join(externalDir,'范围外文件.txt');
+  fs.mkdirSync(externalDir,{recursive:true});fs.writeFileSync(outsideFile,'EXTERNAL_READ_ONLY_PREVIEW');
+  fs.writeFileSync(path.join(externalDir,'neighbor.txt'),'NOT_GRANTED');
+  const context={sessionId:realSessionId};
+  assert.equal((await page.evaluate(({p,context})=>window.shineAI.fileManager.readFile(p,context),{p:outsideFile,context})).kind,'error');
+  await app.evaluate(({dialog})=>{
+    globalThis.chatFileDialogs=[];globalThis.chatFileResponse=1;
+    dialog.showMessageBox=async(...args)=>{globalThis.chatFileDialogs.push(args.at(-1));return {response:globalThis.chatFileResponse};};
+  });
+  const canceled=await page.evaluate(({p,context})=>window.development.chatFiles.prepare(p,context),{p:outsideFile,context});
+  assert.equal(canceled.canceled,true);
+  assert.equal((await page.evaluate(({p,context})=>window.shineAI.fileManager.readFile(p,context),{p:outsideFile,context})).kind,'error');
+  report.checks.cancelDoesNotGrantRead=true;
+  await app.evaluate(()=>{globalThis.chatFileResponse=0;});
+  await page.evaluate(async({aliases,realSessionId,workspace,outsideFile})=>{
+    const m=await import('./assets/index-0LVJEr5c.js'),s=m[aliases.useSessionStore];
+    s.setState({sessions:[{id:realSessionId,name:'范围外文件预览测试',status:'idle',config:{workingDirectory:workspace,directoryAccessMode:'extended'}}],selectedSessionId:realSessionId});
+    await s.getState().openSessionForChat(realSessionId);
+    s.setState({conversations:{[realSessionId]:[{id:'outside',role:'assistant',timestamp:Date.now(),content:'[打开范围外文件]('+outsideFile.replaceAll('\\','/')+')'}]},conversationLoading:{}});
+  },{aliases,realSessionId,workspace,outsideFile});
+  await page.getByRole('link',{name:'打开范围外文件',exact:true}).click();
+  const preview=await expectFile(outsideFile);
+  assert.equal(preview.content,'EXTERNAL_READ_ONLY_PREVIEW');assert.equal(preview.isEditable,false);
+  await page.waitForFunction(()=>[...document.querySelectorAll('.monaco-editor .view-lines,textarea[readonly]')].some(e=>e.getBoundingClientRect().width>0&&(e.value||e.textContent).includes('EXTERNAL_READ_ONLY_PREVIEW')));
+  await page.screenshot({path:path.join(root,'artifacts',executable?'installed-outside-file-preview.png':'outside-file-preview.png')});
+  const denied=await page.evaluate(async({outsideFile,context})=>({
+    write:await window.shineAI.fileManager.writeFile(outsideFile,'MUST_NOT_WRITE',context),
+    neighbor:await window.shineAI.fileManager.readFile(outsideFile.replace('范围外文件.txt','neighbor.txt'),context)
+  }),{outsideFile,context});
+  assert.ok(denied.write.error);assert.equal(denied.neighbor.kind,'error');
+  assert.equal(fs.readFileSync(outsideFile,'utf8'),'EXTERNAL_READ_ONLY_PREVIEW');
+  const count=await app.evaluate(()=>globalThis.chatFileDialogs.length);
+  await page.getByRole('link',{name:'打开范围外文件',exact:true}).click();
+  assert.equal(await app.evaluate(()=>globalThis.chatFileDialogs.length),count);
+  const system=await page.evaluate(()=>window.development.chatFiles.prepare('C:\\Windows\\System32\\drivers\\etc\\hosts'));
+  assert.equal(system.success,false);assert.equal(await app.evaluate(()=>globalThis.chatFileDialogs.length),count);
+  report.checks.outsideFileVisibleReadOnlyInSidePanel=true;
+  report.checks.previewGrantsNoWriteOrNeighborAccess=true;
+  report.checks.repeatPreviewDoesNotPromptAgain=true;
+  report.checks.systemPathsRemainProtected=true;
+  const outsideImage=path.join(externalDir,'范围外图片.png');
+  fs.copyFileSync(path.join(workspace,'pixel.png'),outsideImage);
+  await page.evaluate(async({aliases,realSessionId,outsideImage})=>{
+    const m=await import('./assets/index-0LVJEr5c.js');
+    m[aliases.useSessionStore].setState({conversations:{[realSessionId]:[{id:'outside-image',role:'assistant',timestamp:Date.now(),content:'[打开范围外图片]('+outsideImage.replaceAll('\\','/')+')'}]}});
+  },{aliases,realSessionId,outsideImage});
+  await page.getByRole('link',{name:'打开范围外图片',exact:true}).click();
+  assert.equal((await expectFile(outsideImage)).previewMode,'image');
+  await page.waitForFunction(()=>{const img=document.querySelector('img[alt="范围外图片.png"]');return img?.complete&&img.naturalWidth>0;});
+  report.checks.outsideImageDecodesAfterConsent=true;
   assert.equal(report.errors.length,0);
 } catch(error) {report.errors.push(error.stack);process.exitCode=1;}
 finally {

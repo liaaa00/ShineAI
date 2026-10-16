@@ -1,9 +1,16 @@
 // File reads stay on the existing validated file-tab store. Never launch a
 // document or executable through the operating system when a chat file is clicked.
-export async function openChatFile({ path, line, col, resolve, files, revealDirectory, notify }) {
+export async function openChatFile({ path, line, col, resolve, prepare, files, revealDirectory, notify }) {
   try {
-    const target = await resolve(path);
+    let target = await resolve(path);
     if (!target?.path) throw new Error('无法确定文件路径，请检查会话工作目录。');
+    if (prepare) {
+      const permission = await prepare(target.path);
+      if (permission?.canceled) return { success: false, canceled: true };
+      if (!permission?.success) throw new Error(permission?.error || '无法打开文件。');
+      if (permission.handled) return permission;
+      target = { ...target, ...permission };
+    }
     // file URLs use forward slashes; project indexes on Windows use backslashes.
     // Give both entry points the same tab identity so edits survive another click.
     const filePath = /^(?:[A-Za-z]:[/\\]|\\\\)/.test(target.path)

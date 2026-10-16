@@ -152881,12 +152881,13 @@ function chatFileOpenAction(path2) {
   return void 0;
 }
 async function openChatLocation(filePath, line, col, directory = false) {
-  const sessionId = useSessionStore.getState().selectedSessionId;
+  const context = getCurrentFileManagerContext();
   return openChatFile({
     path: filePath, line, col,
     resolve: async path => { const target = await resolveChatFilePath(path); return directory ? { ...target, kind: "directory" } : target; },
+    prepare: path => window.development.chatFiles.prepare(path, context),
     files: useFileManagerStore.getState(),
-    revealDirectory: path => window.shineAI.fileManager.showInFolder(path, sessionId ? { sessionId } : void 0),
+    revealDirectory: path => window.shineAI.fileManager.showInFolder(path, context),
     notify: (message, kind) => useUIStore.getState().showToast(message, kind)
   });
 }
@@ -205336,7 +205337,8 @@ function buildComparablePath(dirPath, fileName) {
 async function readFileState(path2) {
   try {
     const result2 = await fileManagerApi$2()?.readFile(path2, getCurrentFileManagerContext());
-    return buildReadState(result2 ?? { error: EMPTY_READ_ERROR }, path2);
+    const state = buildReadState(result2 ?? { error: EMPTY_READ_ERROR }, path2);
+    return result2?.readOnly ? { ...state, isEditable: false } : state;
   } catch (error2) {
     return buildReadState({ error: String(error2) }, path2);
   }

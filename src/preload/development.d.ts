@@ -20,6 +20,9 @@ export interface AppearanceResult {success:boolean;error?:string;canceled?:boole
 declare global {
   interface Window {
     development: {
+      chatFiles: {
+        prepare(path:string, context?:{sessionId?:string}):Promise<{success:boolean;canceled?:boolean;handled?:boolean;path?:string;kind?:'file'|'directory';readOnly?:boolean;error?:string}>;
+      };
       appearance: {
         get():Promise<AppearanceResult>;
         importMedia():Promise<AppearanceResult>;
