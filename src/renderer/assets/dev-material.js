@@ -2,7 +2,7 @@
 // Keep the original theme palette and inline styles intact for native consumers.
 import {registerOcclusion} from './dev-occlusion.js';
 const scope = 'html[data-dev-material="on"]';
-const excluded = ':not([data-appearance-surface]):not([role="img"]):not([role="progressbar"]):not(.cn-dot):not(.cn-last):not(#dev-background):not(.dev-background-mask):not(.dev-background-content):not(.dev-preview-picture):not(.dev-preview-mask):not(#dev-edition-banner):not(img):not(video):not(canvas):not(svg)';
+const excluded = ':not([data-appearance-surface]):not([data-dev-adaptive-region]):not([data-dev-adaptive-text]):not([data-dev-media-label]):not([data-dev-semantic-text]):not([role="img"]):not([role="progressbar"]):not(.cn-dot):not(.cn-last):not(#dev-background):not(.dev-background-mask):not(.dev-background-content):not(.dev-preview-picture):not(.dev-preview-mask):not(#dev-edition-banner):not(img):not(video):not(canvas):not(svg)';
 let sheet, scheduled = false;
 const inline = new WeakMap();
 const mix = color => `color-mix(in srgb, ${color} calc(var(--dev-material-scale) * 100%), transparent)`;
