@@ -53,14 +53,14 @@ function splitSelectors(value) {
   }
   selectors.push(value.slice(start)); return selectors;
 }
-function scopedSelector(value) {
+function scopedSelector(value, foreground = false) {
   return splitSelectors(value).map(selector => {
     selector = selector.trim();
     if (/^(?:html|body|:root)$/.test(selector) || /#dev-background|#dev-edition-banner|#root\b|data-appearance-surface|data-dev-inline|dev-background-|dev-preview-(?:picture|mask)/.test(selector)) return '';
     // Keep pseudo-elements at the end; :is(::before) would be invalid CSS.
     const pseudo = selector.match(/::[\w-]+(?:\([^)]*\))?$/)?.[0] || '';
     const base = pseudo ? selector.slice(0, -pseudo.length) : selector;
-    return `${scope} :is(${base})${excluded}${pseudo}`;
+    return `${scope} :is(${base})${excluded}${foreground ? ':not([data-dev-adaptive-text])' : ''}${pseudo}`;
   }).filter(Boolean).join(',');
 }
 function declarations(style) {
@@ -83,19 +83,23 @@ function declarations(style) {
     const value = style.getPropertyValue(name);
     if (value) output.push(`${name}:${gradientColors(value)}!important`);
   }
-  const text = style.getPropertyValue('color');
-  if (output.length && /^(?:white|#fff(?:fff)?|rgb\(255,\s*255,\s*255\))$/i.test(text.trim())) output.push('color:var(--color-text-primary)!important');
+  const text = style.getPropertyValue('color'), foreground = [];
+  if (output.length && /^(?:white|#fff(?:fff)?|rgb\(255,\s*255,\s*255\))$/i.test(text.trim())) foreground.push('color:var(--color-text-primary)!important');
   if (text && /var\(--(?:color-text-(?:muted|secondary)|v2-text-(?:muted|dim|secondary)|cn-ink-[234])/.test(text)) {
-    output.push(`color:${text.replace(/var\(--(?:color-text-(?:muted|secondary)|v2-text-(?:muted|dim|secondary)|cn-ink-[234])\)/g,'var(--dev-readable-muted)')}!important`);
+    foreground.push(`color:${text.replace(/var\(--(?:color-text-(?:muted|secondary)|v2-text-(?:muted|dim|secondary)|cn-ink-[234])\)/g,'var(--dev-readable-muted)')}!important`);
   }
-  return output.join(';');
+  return {background:output.join(';'), foreground:foreground.join(';')};
 }
 function renderRules(rules) {
   let output = '';
   for (const rule of rules) {
     if (rule.selectorText && rule.style) {
       const selector = scopedSelector(rule.selectorText), values = declarations(rule.style);
-      if (selector && values) output += `${selector}{${values}}\n`;
+      if (selector && values.background) output += `${selector}{${values.background}}\n`;
+      // Adaptive text owns only foreground. Keep every original transparency
+      // rule active on that same element, including buttons and image captions.
+      const textSelector = values.foreground && scopedSelector(rule.selectorText, true);
+      if (textSelector) output += `${textSelector}{${values.foreground}}\n`;
     } else if (rule.cssRules && !/keyframes/i.test(rule.constructor.name)) {
       const body = renderRules(rule.cssRules);
       if (body) output += rule.cssText.slice(0, rule.cssText.indexOf('{') + 1) + body + '}\n';
