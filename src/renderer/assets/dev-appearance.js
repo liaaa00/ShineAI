@@ -1,6 +1,5 @@
 // Local background preferences. All filesystem access stays behind the preload.
 import {registerMaterials} from './dev-material.js';
-import {updateReadability} from './dev-contrast.js';
 const bridge = window.development?.appearance;
 let config, media, stage, activeMedia, serial = 0, revision = 0, saveTimer, saveQueue = Promise.resolve();
 const listeners = new Set();
@@ -32,18 +31,6 @@ function updateMotion() {
     if (moving && config.enabled) { if (activeMedia.element.getAttribute('src') !== activeMedia.url) activeMedia.element.src = activeMedia.url; }
     else activeMedia.element.removeAttribute('src');
   }
-  syncReadability();
-}
-function syncReadability() {
-  const root = document.documentElement;
-  updateReadability({
-    enabled: root.dataset.devMaterial === 'on',
-    element: activeMedia?.element.hidden ? activeMedia.poster : activeMedia?.element,
-    key: activeMedia?.id + ':' + mode(),
-    config, values: config[mode()], moving: isMoving(),
-    base: getComputedStyle(root).getPropertyValue('--color-bg-primary').trim(),
-    dark: mode() === 'dark'
-  });
 }
 function paint() {
   if (!config) return;
@@ -63,7 +50,6 @@ function paint() {
   root.style.setProperty('--dev-background-fit', config.fit);
   root.style.setProperty('--dev-background-position', config.positionX + '% ' + config.positionY + '%');
   updateMotion();
-  if (!activeMedia) syncReadability();
   listeners.forEach(fn => fn());
 }
 // Xterm paints its own background; CSS on its parent cannot remove that fill.
@@ -151,7 +137,7 @@ export function mountAppearancePanel(host) {
       <div class="dev-controls"><div class="dev-mode-row"><strong data-mode-label></strong><span>明暗主题分别保存</span></div>
       <div class="dev-presets"><button type="button" data-preset="original">原画视频</button><button type="button" data-preset="wallpaper">清晰壁纸</button><button type="button" data-preset="glass">柔和玻璃</button><button type="button" data-preset="focus">专注阅读</button></div>
       ${[['strength','背景强度',100],['mask','背景遮罩',100],['transparency','面板透明度',100],['blur','背景模糊',24],['panelBlur','浮层模糊',24]].map(([key,label,max])=>`<label class="dev-slider"><span>${label}<output data-output="${key}"></output></span><input aria-label="${label}" type="range" min="0" max="${max}" step="1" data-control="${key}"></label>`).join('')}
-      <p class="dev-help">文字随壁纸明暗调整，轻微字边保护不增加底色。动态壁纸缓慢适应，避免频繁变色。背景模糊影响整张画面；浮层模糊影响面板和菜单后方。</p>
+      <p class="dev-help">背景模糊影响整张画面；浮层模糊影响面板和菜单后方。原画视频去掉模糊和遮罩，并完整显示画面；文字可能随画面变得难读。</p>
       <div class="dev-fit"><label>显示方式 <select aria-label="背景显示方式" data-control="fit"><option value="cover">铺满窗口</option><option value="contain">完整显示</option></select></label><label><input type="checkbox" data-control="motion"> 动态播放</label></div>
       ${[['positionX','水平位置'],['positionY','垂直位置']].map(([key,label])=>`<label class="dev-slider dev-position"><span>${label}<output data-output="${key}"></output></span><input aria-label="${label}" type="range" min="0" max="100" data-control="${key}"></label>`).join('')}
       <div class="dev-appearance-footer"><button type="button" data-action="reset">恢复默认</button><span role="status" aria-live="polite"></span></div></div>
