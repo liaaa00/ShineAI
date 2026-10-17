@@ -83710,7 +83710,7 @@ function Brand() {
       className: "flex items-center gap-1.5 px-3 text-xs font-semibold tracking-wide text-text-primary",
       style: { WebkitAppRegion: "no-drag" },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Zap, { size: 13, className: "text-accent-blue", strokeWidth: 2.5 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "./assets/shineai-mark.svg", width: 16, height: 16, alt: "", "aria-hidden": true }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "ShineAI" })
       ]
     }
@@ -275192,7 +275192,7 @@ function EnhancedWelcomeTab() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-appearance-surface": "shell", className: "h-full overflow-y-auto bg-bg-primary", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-auto flex min-h-full max-w-5xl flex-col justify-center px-8 py-10", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-8 flex flex-col items-center text-center", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Bot, { className: "h-10 w-10 text-accent-blue" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "./assets/shineai-mark.svg", width: 40, height: 40, alt: "" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-2xl font-bold text-text-primary", children: "ShineAI" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-xl font-semibold text-text-primary", children: t2("welcomePage.title") }),

@@ -4,7 +4,7 @@
 
 安装版数据位于 `%APPDATA%\ShineAI\Desktop`，源码开发数据位于工程 `.data`。不会自动导入官方账号或其他旧应用的数据，也不会覆盖本机另一旧项目已有的 `%APPDATA%\ShineAI` 根数据。卸载保留用户数据。切换旧开发版前应先关闭它并备份/导出配置，不能在应用写入时复制 SQLite。
 
-本轮完成品牌代码和运行检查，尚未生成新的 ShineAI 安装包。此前安装器、哈希和安装耗时属于旧名称版本的历史记录，不能作为新包的验收结果。
+当前打包会写入 ShineAI 的 Windows 文件属性，并使用项目自己的日出图标。具体构建指纹、SHA-256 和安装包路径以新生成的 `artifacts/installer/package-report.json` 为准。
 
 ## 首次准备
 
@@ -17,6 +17,9 @@ Copy-Item scripts/packaging/package-lock.json .runtime/packaging/package-lock.js
 npm ci --prefix .runtime/packaging --no-audit --no-fund
 node scripts/packaging/restore-nsis.mjs
 ```
+
+还需要固定版本的 Windows 资源编辑器 `rcedit` 2.0.0。下载位置与校验值见
+[品牌迁移说明](BRAND_MIGRATION.md)，文件放在 `.runtime/packaging/rcedit-x64.exe`。
 
 ## 生成与验证
 
@@ -38,5 +41,11 @@ node scripts/update-installed.mjs "E:/AI/ShineAI"
 ```
 
 先退出应用。脚本校验目标身份和构建哈希，备份后更新 `resources/app/out`，失败回滚；不更新运行时、内置资源或用户数据，因此本轮包含内置 MCP 路径改名的首次品牌切换应使用新安装包或完整副本，不能只运行这个增量命令。
+
+旧独立开发版的首次切换使用完整安装器。已有自定义数据目录的 profile，可使用
+`scripts/migrate-independent-profile.py` 显式备份和迁移，随后使用
+`scripts/migrate-brand-catalog.py` 迁移确切的内置 MCP 标识与生成的工具说明引用。
+两步都应在应用关闭时运行。前者保留自定义数据位置；后者先备份数据库，再以事务
+更新内置目录元信息，不改写会话正文、用户提示词或密钥。具体限制见品牌迁移说明。
 
 完整压缩包含大量模型 CLI 和运行时文件，耗时比开发构建长。日常开发使用 `npm run build` 和 `npm start`，需要安装体验时再打包。

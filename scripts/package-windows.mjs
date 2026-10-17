@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { prepareExtractor } from './packaging/nsis-extractor.mjs';
+import { brandWindowsExecutable } from './packaging/windows-brand.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +52,7 @@ if (!reuseStage) {
   }, null, 2) + '\n');
 }
 const appRoot = path.join(stage, 'resources/app');
+await brandWindowsExecutable(root,path.join(stage,'ShineAI.exe'),metadata.version);
 if (fs.readdirSync(appRoot).sort().join(',') !== 'node_modules,out,package.json,resources') throw new Error('Unexpected staged application content');
 for (const entry of buildManifest.files) {
   const staged = fs.readFileSync(path.join(appRoot, 'out', entry.path));

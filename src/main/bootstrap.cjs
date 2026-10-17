@@ -27,7 +27,11 @@ Object.defineProperty(process, 'resourcesPath', { value: config.resources, confi
 app.name = 'shineai-dev';
 app.setPath('userData', config.userData);
 app.setPath('sessionData', path.join(config.userData, 'chromium'));
-app.setAppUserModelId(app.isPackaged ? 'com.local.shineai.dev.installed' : 'com.local.shineai.dev');
+// The recovered bundle also sets an upstream AppUserModelID. Keep one identity
+// for the shortcut, taskbar and notifications throughout the process lifetime.
+const setIdentity = app.setAppUserModelId.bind(app);
+app.setAppUserModelId = () => setIdentity(app.isPackaged ? 'com.local.shineai.dev.installed' : 'com.local.shineai.dev');
+app.setAppUserModelId();
 // A development runtime never starts an official installer or replaces official URL handlers.
 const registerProtocol = app.setAsDefaultProtocolClient.bind(app);
 app.setAsDefaultProtocolClient = protocol => {

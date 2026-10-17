@@ -1,5 +1,6 @@
 {
   "name": "shineai-dev",
+  "productName": "ShineAI",
   "version": "1.0.6",
   "private": true,
   "main": "out/main/bootstrap.cjs",

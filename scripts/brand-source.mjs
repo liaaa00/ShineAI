@@ -20,6 +20,10 @@ export function brandSource(source) {
   for (const [i, value] of protectedValues.entries()) source = source.replaceAll(value, `__BRAND_CONTRACT_${i}__`);
   for (const [from, to] of [[legacy.toUpperCase(), 'SHINEAI'], [legacy[0].toLowerCase() + legacy.slice(1), 'shineAI'], [legacy, 'ShineAI'], [legacy.slice(0, -1) + 'i', 'ShineAI'], [legacy.toLowerCase(), 'shineai']]) source = source.replaceAll(from, to);
   for (const [i, value] of protectedValues.entries()) source = source.replaceAll(`__BRAND_CONTRACT_${i}__`, value);
+  if (source.includes('function Brand()')) {
+    source = source.replace('jsxRuntimeExports.jsx(Zap, { size: 13, className: "text-accent-blue", strokeWidth: 2.5 })', 'jsxRuntimeExports.jsx("img", { src: "./assets/shineai-mark.svg", width: 16, height: 16, alt: "", "aria-hidden": true })');
+    source = source.replace('jsxRuntimeExports.jsx(Bot, { className: "h-10 w-10 text-accent-blue" })', 'jsxRuntimeExports.jsx("img", { src: "./assets/shineai-mark.svg", width: 40, height: 40, alt: "" })');
+  }
   return source;
 }
 
