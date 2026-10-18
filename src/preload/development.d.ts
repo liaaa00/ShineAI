@@ -10,10 +10,16 @@ export interface DevelopmentRuntimeInfo {
   userData: string;
   ports: { localAuth: null; meeting: null };
 }
+export interface AppearanceTextConfig {
+  enabled:boolean; color:string|null; outlineWidth:number; outlineOpacity:number; outlineColor:string;
+}
+export interface AppearanceThemeConfig {
+  strength:number; mask:number; transparency:number; blur:number; panelBlur:number; text:AppearanceTextConfig;
+}
 export interface AppearanceConfig {
   version:1; enabled:boolean; media:string|null; fit:'cover'|'contain'; positionX:number; positionY:number; motion:boolean;
-  light: {strength:number;mask:number;transparency:number;blur:number;panelBlur:number};
-  dark: {strength:number;mask:number;transparency:number;blur:number;panelBlur:number};
+  light: AppearanceThemeConfig;
+  dark: AppearanceThemeConfig;
 }
 export interface AppearanceMedia {id:string;name:string;type:string;url:string;size:number}
 export interface AppearanceResult {success:boolean;error?:string;canceled?:boolean;config?:AppearanceConfig;media?:AppearanceMedia|null}

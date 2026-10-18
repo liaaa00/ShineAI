@@ -1,5 +1,6 @@
 // Local background preferences. All filesystem access stays behind the preload.
 import {registerMaterials} from './dev-material.js';
+import {applyTextAppearance,defaultText} from './dev-text-appearance.js';
 const bridge = window.development?.appearance;
 let config, media, stage, activeMedia, serial = 0, revision = 0, saveTimer, saveQueue = Promise.resolve();
 const listeners = new Set();
@@ -49,6 +50,7 @@ function paint() {
   root.style.setProperty('--dev-panel-filter', (values.panelBlur ?? 16) > 0 ? `blur(${values.panelBlur ?? 16}px)` : 'none');
   root.style.setProperty('--dev-background-fit', config.fit);
   root.style.setProperty('--dev-background-position', config.positionX + '% ' + config.positionY + '%');
+  applyTextAppearance(values.text,config.enabled&&!!activeMedia);
   updateMotion();
   listeners.forEach(fn => fn());
 }
@@ -99,7 +101,9 @@ async function loadSnapshot(snapshot) {
   catch (error) { announce(error.message, true); return; }
   if (ticket !== serial) { dispose(prepared); return; }
   if (!snapshot.media) commitMedia(null); else if (prepared) commitMedia(prepared);
-  config = clone(snapshot.config); media = snapshot.media; paint();
+  config = clone(snapshot.config); media = snapshot.media;
+  for(const theme of ['light','dark'])config[theme].text??=defaultText(theme);
+  paint();
   if(config.media && !media) announce('背景文件已丢失，请重新导入或恢复默认', true);
 }
 function scheduleSave() {
@@ -138,6 +142,17 @@ export function mountAppearancePanel(host) {
       <div class="dev-presets"><button type="button" data-preset="original">原画视频</button><button type="button" data-preset="wallpaper">清晰壁纸</button><button type="button" data-preset="glass">柔和玻璃</button><button type="button" data-preset="focus">专注阅读</button></div>
       ${[['strength','背景强度',100],['mask','背景遮罩',100],['transparency','面板透明度',100],['blur','背景模糊',24],['panelBlur','浮层模糊',24]].map(([key,label,max])=>`<label class="dev-slider"><span>${label}<output data-output="${key}"></output></span><input aria-label="${label}" type="range" min="0" max="${max}" step="1" data-control="${key}"></label>`).join('')}
       <p class="dev-help">背景模糊影响整张画面；浮层模糊影响面板和菜单后方。原画视频去掉模糊和遮罩，并完整显示画面；文字可能随画面变得难读。</p>
+      <section class="dev-text-controls" aria-label="手动文字设置">
+        <div class="dev-text-heading"><label><input type="checkbox" data-text-control="enabled"> 手动调整文字</label><button type="button" data-action="reset-text">恢复默认文字</button></div>
+        <p class="dev-help">默认沿用主题字体和颜色。开启后仅对壁纸界面的普通文字生效，不改变字重、代码配色或增加底板。</p>
+        <fieldset data-text-options><legend class="dev-sr-only">文字颜色与细描边</legend>
+          <div class="dev-text-color-row"><label>文字颜色 <select aria-label="文字颜色模式" data-text-control="colorMode"><option value="theme">跟随主题</option><option value="custom">自定义</option></select></label><input type="color" aria-label="自定义文字颜色" data-text-control="color"></div>
+          <label class="dev-slider"><span>描边宽度<output data-text-output="outlineWidth"></output></span><input type="range" aria-label="描边宽度" min="0" max="1" step="0.1" data-text-control="outlineWidth"></label>
+          <label class="dev-slider"><span>描边强度<output data-text-output="outlineOpacity"></output></span><input type="range" aria-label="描边强度" min="0" max="100" step="1" data-text-control="outlineOpacity"></label>
+          <div class="dev-text-color-row"><label for="dev-text-outline-color">描边颜色</label><input id="dev-text-outline-color" type="color" aria-label="描边颜色" data-text-control="outlineColor"></div>
+          <p class="dev-help">宽度或强度设为 0 即关闭描边。壁纸关闭时恢复主题文字；明暗主题分别保存。</p>
+        </fieldset>
+      </section>
       <div class="dev-fit"><label>显示方式 <select aria-label="背景显示方式" data-control="fit"><option value="cover">铺满窗口</option><option value="contain">完整显示</option></select></label><label><input type="checkbox" data-control="motion"> 动态播放</label></div>
       ${[['positionX','水平位置'],['positionY','垂直位置']].map(([key,label])=>`<label class="dev-slider dev-position"><span>${label}<output data-output="${key}"></output></span><input aria-label="${label}" type="range" min="0" max="100" data-control="${key}"></label>`).join('')}
       <div class="dev-appearance-footer"><button type="button" data-action="reset">恢复默认</button><span role="status" aria-live="polite"></span></div></div>
@@ -147,6 +162,16 @@ export function mountAppearancePanel(host) {
     host.querySelector('[role="status"]').textContent = status; host.querySelector('[role="status"]').dataset.error = failure;
     if (!config) return;
     const values = config[mode()];
+    const text=values.text;
+    host.querySelector('[data-text-options]').disabled=!text.enabled;
+    for(const input of host.querySelectorAll('[data-text-control]')) {
+      const key=input.dataset.textControl;
+      if(key==='enabled')input.checked=text.enabled;
+      else if(key==='colorMode')input.value=text.color?'custom':'theme';
+      else if(key==='color') {input.value=text.color||getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim();input.disabled=!text.color;}
+      else input.value=text[key];
+      const output=host.querySelector(`[data-text-output="${key}"]`);if(output)output.textContent=text[key]+(key==='outlineWidth'?' px':'%');
+    }
     host.querySelector('[data-mode-label]').textContent = mode() === 'dark' ? '暗色效果' : '浅色效果';
     host.querySelector('[data-control="enabled"]').disabled = !media;
     for (const input of host.querySelectorAll('[data-control]')) {
@@ -166,6 +191,14 @@ export function mountAppearancePanel(host) {
     picture.style.backgroundPosition = config.positionX + '% ' + config.positionY + '%';
   }
   const onInput = event => {
+    const textKey=event.target.dataset.textControl;
+    if(textKey&&config) {
+      change(next=>{const text=next[mode()].text;
+        if(textKey==='enabled')text.enabled=event.target.checked;
+        else if(textKey==='colorMode')text.color=event.target.value==='custom'?getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim():null;
+        else text[textKey]=event.target.type==='range'?Number(event.target.value):event.target.value;
+      });return;
+    }
     const key = event.target.dataset.control; if (!key || !config) return;
     change(next => { const target = key in next[mode()] ? next[mode()] : next; target[key] = event.target.type === 'checkbox' ? event.target.checked : event.target.tagName === 'SELECT' ? event.target.value : Number(event.target.value); });
   };
@@ -179,7 +212,8 @@ export function mountAppearancePanel(host) {
       });
     }
     if (button.dataset.action === 'clear') { serial++; commitMedia(null); media = null; change(next => {next.media = null; next.enabled = false;}); }
-    if (button.dataset.action === 'reset') change(next => {next.enabled = false; next.motion = true; next.fit = 'cover'; next.positionX = next.positionY = 50; next.light = {strength:80,mask:30,transparency:35,blur:0,panelBlur:16}; next.dark = {strength:85,mask:30,transparency:45,blur:0,panelBlur:16};});
+    if (button.dataset.action === 'reset-text') change(next=>{next[mode()].text=defaultText(mode());});
+    if (button.dataset.action === 'reset') change(next => {next.enabled = false; next.motion = true; next.fit = 'cover'; next.positionX = next.positionY = 50; next.light = {strength:80,mask:30,transparency:35,blur:0,panelBlur:16,text:defaultText('light')}; next.dark = {strength:85,mask:30,transparency:45,blur:0,panelBlur:16,text:defaultText('dark')};});
     if (button.dataset.action === 'import' && !importing) {
       importing = true; render();
       let candidate;

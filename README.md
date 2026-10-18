@@ -63,4 +63,7 @@ npm run package:win
 旧独立开发版切换到完整 ShineAI 程序的备份方式、数据兼容和品牌保留范围，见
 [品牌迁移说明](docs/BRAND_MIGRATION.md)。窗口和 Windows 文件图标已使用项目自己的日出标识。
 
+壁纸文字保持默认，按需开启 [手动文字效果](docs/MANUAL_TEXT.md)。同类开源项目的
+源码对照与后续优先级见 [整体优化分析](docs/PROJECT_OPTIMIZATION_2026-10-18.md)。
+
 本仓库的重建与改名不改变上游及第三方代码、资源的权利归属；保留原有许可文件。没有将整个重建工程重新声明为 MIT 授权。

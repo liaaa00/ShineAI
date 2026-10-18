@@ -27,6 +27,18 @@ test('old appearance profiles retain glass blur, and zero blur is a valid persis
  assert.equal(normalize({...legacy,light:{...legacy.light,panelBlur:0}}).light.panelBlur,0);
  for(const panelBlur of [-1,25,NaN,'0',null])assert.throws(()=>normalize({...legacy,light:{...legacy.light,panelBlur}}));
 });
+
+test('manual text effects are opt-in for old profiles and validate colors and fine outline settings',()=>{
+ const legacy=defaults();delete legacy.light.text;delete legacy.dark.text;
+ const normalized=normalize(legacy);
+ assert.equal(normalized.light.text.enabled,false);assert.equal(normalized.dark.text.enabled,false);
+ assert.equal(normalized.light.text.color,null);
+ const configured=defaults();configured.dark.text={enabled:true,color:'#ACBDEF',outlineWidth:0.3,outlineOpacity:35,outlineColor:'#101010'};
+ const saved=normalize(configured);assert.equal(saved.dark.text.color,'#acbdef');assert.equal(saved.dark.text.outlineWidth,0.3);
+ assert.equal(saved.light.text.enabled,false);
+ for(const patch of [{color:'red'},{color:'url(file:///private)'},{outlineColor:'#fff'},{outlineWidth:1.1},{outlineWidth:-1},{outlineOpacity:101},{enabled:'true'}])
+  assert.throws(()=>normalize({...configured,dark:{...configured.dark,text:{...configured.dark.text,...patch}}}));
+});
 test('background import checks file signatures instead of trusting extensions',()=>{
  sniff(Buffer.from([137,80,78,71,13,10,26,10]),'.png');
  sniff(Buffer.from('GIF89a'),'.gif');sniff(Buffer.from([26,69,223,163]),'.webm');

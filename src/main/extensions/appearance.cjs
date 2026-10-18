@@ -6,7 +6,8 @@ const {Readable} = require('node:stream');
 
 const SCHEME='shineai-media';
 const TYPES={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.mp4':'video/mp4','.webm':'video/webm'};
-const defaults=()=>({version:1,enabled:false,media:null,fit:'cover',positionX:50,positionY:50,motion:true,light:{strength:80,mask:30,transparency:35,blur:0,panelBlur:16},dark:{strength:85,mask:30,transparency:45,blur:0,panelBlur:16}});
+const textDefaults=mode=>({enabled:false,color:null,outlineWidth:0.5,outlineOpacity:60,outlineColor:mode==='dark'?'#000000':'#ffffff'});
+const defaults=()=>({version:1,enabled:false,media:null,fit:'cover',positionX:50,positionY:50,motion:true,light:{strength:80,mask:30,transparency:35,blur:0,panelBlur:16,text:textDefaults('light')},dark:{strength:85,mask:30,transparency:45,blur:0,panelBlur:16,text:textDefaults('dark')}});
 function normalize(input) {
   if(!input || typeof input!=='object' || Array.isArray(input))throw Error('外观配置无效');
   const out=defaults();
@@ -19,6 +20,13 @@ function normalize(input) {
   for(const mode of ['light','dark'])for(const key of ['strength','mask','transparency','blur'])out[mode][key]=number(input[mode]?.[key],key==='blur'?24:100);
   // Old profiles had a fixed 16 px glass blur. Keep that value until changed.
   for(const mode of ['light','dark'])if(input[mode]?.panelBlur!==undefined)out[mode].panelBlur=number(input[mode].panelBlur,24);
+  // Missing fields in existing profiles opt out of every new text effect.
+  for(const mode of ['light','dark']) {
+    const text=input[mode]?.text;if(text===undefined)continue;
+    if(!text||typeof text!=='object'||Array.isArray(text)||typeof text.enabled!=='boolean')throw Error('文字配置无效');
+    const color=value=>{if(typeof value!=='string'||!/^#[0-9a-f]{6}$/i.test(value))throw Error('文字颜色无效');return value.toLowerCase();};
+    out[mode].text={enabled:text.enabled,color:text.color===null?null:color(text.color),outlineWidth:number(text.outlineWidth,1),outlineOpacity:number(text.outlineOpacity,100),outlineColor:color(text.outlineColor)};
+  }
   return out;
 }
 function sniff(header,extension) {
@@ -109,4 +117,4 @@ function registerAppearance({app,ipcMain,protocol,dialog,BrowserWindow,config}) 
     }catch{return new Response(null,{status:404});}
   })).catch(error=>console.error('[Appearance] Media protocol registration failed',error.message));
 }
-module.exports={registerAppearance,defaults,normalize,sniff,rangeFor};
+module.exports={registerAppearance,defaults,normalize,sniff,rangeFor,textDefaults};

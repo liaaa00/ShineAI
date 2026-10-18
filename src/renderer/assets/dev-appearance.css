@@ -54,3 +54,43 @@ html[data-dev-material="on"] :is(button,[role="button"],a):is([class*="text-whit
 /* Floating panels share the adjustable blur, including zero for original video.
    The wallpaper remains the same window-wide image under this glass. */
 html[data-dev-material="on"] :is([data-canvas-drawer],.cn-peek,[data-drawer-more-menu],[role="dialog"],.fixed[class*="z-"],.absolute[class*="z-40"],.absolute[class*="z-50"],[style*="backdrop-filter"]){backdrop-filter:var(--dev-panel-filter)!important}
+
+/* Opt-in, manual text controls. These flags stay off for every existing profile.
+   Keep theme variables outside #root intact and never alter font face/weight. */
+html[data-dev-text-color="on"] #root {
+  --color-text-primary:var(--dev-text-color);
+  --color-text-secondary:var(--dev-text-color);
+  --color-text-muted:var(--dev-text-color);
+  --color-text-tertiary:var(--dev-text-color);
+  --color-text-disabled:var(--dev-text-color);
+  --v2-text-primary:var(--dev-text-color);
+  --v2-text-secondary:var(--dev-text-color);
+  --v2-text-muted:var(--dev-text-color);
+  --v2-text-dim:var(--dev-text-color);
+  --dev-readable-muted:var(--dev-text-color);
+  color:var(--dev-text-color);
+}
+html[data-dev-text-outline="on"] #root {text-shadow:var(--dev-text-outline)}
+html:is([data-dev-text-color="on"],[data-dev-text-outline="on"]) #root :is(pre,code,.monaco-editor,.xterm,.dev-text-controls) {
+  --color-text-primary:var(--dev-base-color-text-primary);
+  --color-text-secondary:var(--dev-base-color-text-secondary);
+  --color-text-muted:var(--dev-base-color-text-muted);
+  --color-text-tertiary:var(--dev-base-color-text-tertiary);
+  --color-text-disabled:var(--dev-base-color-text-disabled);
+  --v2-text-primary:var(--dev-base-v2-text-primary);
+  --v2-text-secondary:var(--dev-base-v2-text-secondary);
+  --v2-text-muted:var(--dev-base-v2-text-muted);
+  --v2-text-dim:var(--dev-base-v2-text-dim);
+  --dev-readable-muted:color-mix(in srgb,var(--dev-base-color-text-primary) 80%,var(--dev-base-color-text-secondary));
+  text-shadow:none;
+}
+html[data-dev-text-color="on"] #root :is(pre,code,.dev-text-controls) {color:var(--color-text-primary)}
+.dev-text-controls{border-top:1px solid var(--color-border-primary);margin-top:18px;padding-top:14px}
+.dev-text-heading,.dev-text-color-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
+.dev-text-heading>label{font-weight:600}
+.dev-text-controls fieldset{border:0;padding:0;margin:12px 0 0;min-width:0}
+.dev-text-controls fieldset:disabled{opacity:.55}
+.dev-text-color-row{margin-top:12px}
+.dev-text-color-row label{display:flex;align-items:center;gap:8px}
+.dev-text-controls input[type="color"]{width:36px;height:28px;border:1px solid var(--color-border-primary);border-radius:5px;padding:2px;background:transparent;cursor:pointer}
+.dev-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
