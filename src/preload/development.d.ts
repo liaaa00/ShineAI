@@ -23,6 +23,12 @@ export interface AppearanceConfig {
 }
 export interface AppearanceMedia {id:string;name:string;type:string;url:string;size:number}
 export interface AppearanceResult {success:boolean;error?:string;canceled?:boolean;config?:AppearanceConfig;media?:AppearanceMedia|null}
+/** window.shineAI.registry.fetchLeaderboard accepts these optional refresh preferences. */
+export interface SkillLeaderboardOptions {force?:boolean}
+export interface SkillLeaderboardResult {
+  success:boolean;data:Array<{source:string;skillId:string;name:string;installs?:number}>;
+  fetchedAt:number|null;stale:boolean;error?:string;errorCode?:string;
+}
 declare global {
   interface Window {
     development: {

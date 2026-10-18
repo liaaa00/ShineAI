@@ -21,6 +21,7 @@
     "smoke:reliability": "node scripts/reliability-smoke.mjs",
     "smoke:appearance": "node scripts/appearance-smoke.mjs",
     "smoke:manual-text": "node scripts/manual-text-smoke.mjs",
+    "smoke:usability": "node scripts/usability-smoke.mjs",
     "smoke:appearance-board": "node scripts/appearance-board-smoke.mjs",
     "smoke:appearance-surfaces": "node scripts/appearance-surfaces-smoke.mjs",
     "smoke:appearance-occlusion": "node scripts/appearance-occlusion-smoke.mjs",

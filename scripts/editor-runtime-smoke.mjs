@@ -80,7 +80,13 @@ try {
   await page.waitForFunction(()=>window.monaco.editor.getEditors().some(editor=>editor.getModel()?.getValue().includes('EDITOR_OFFLINE_FIXTURE')&&editor.getOption(window.monaco.editor.EditorOption.readOnly)));
   report.checks.readOnlyTabsStayReadOnlyInMonaco=true;
   assert.equal(remote.length,0);assert.equal(report.errors.length,0);
-} catch(error) {report.errors.push(error.stack);process.exitCode=1;}
+} catch(error) {report.errors.push(error.stack);process.exitCode=1;
+  if(page&&!page.isClosed())report.failureState=await page.evaluate(()=>({
+    development:!!window.development,chatFiles:!!window.development?.chatFiles,
+    bridge:!!window.shineAI,rootChildren:document.querySelector('#root')?.children.length,
+    readyState:document.readyState
+  })).catch(()=>null);
+}
 finally {
   if(page&&process.exitCode)await page.screenshot({path:path.join(root,'artifacts/editor-runtime-failure.png')}).catch(()=>{});
   if(app)await app.close();

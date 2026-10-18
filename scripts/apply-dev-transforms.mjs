@@ -125,3 +125,7 @@ await import('./patch-appearance.mjs').then(module => module.patchAppearance());
 await import('./patch-workbench.mjs').then(module => module.patchWorkbench());
 await import('./patch-editor-runtime.mjs').then(module => module.patchEditorRuntimeFiles());
 await import('./patch-task-notifications.mjs').then(module => module.patchTaskNotificationFiles());
+const usability = await import('./patch-usability.mjs');
+fs.writeFileSync(mainFile, usability.patchUsabilityMain(fs.readFileSync(mainFile,'utf8')));
+fs.writeFileSync(rendererFile, usability.patchUsabilityRenderer(fs.readFileSync(rendererFile,'utf8')));
+fs.writeFileSync(preload, usability.patchUsabilityPreload(fs.readFileSync(preload,'utf8')));

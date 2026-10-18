@@ -5,6 +5,25 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const require=createRequire(path.join(root,'.runtime/package.json'));
 const {parse}=require('acorn'),{ancestor}=require('acorn-walk');
+export function patchAppearancePreload(source) {
+  const tree=parse(source,{ecmaVersion:'latest',sourceType:'script'});
+  const call=tree.body.find(node=>node.type==='ExpressionStatement' && node.expression.type==='CallExpression' && node.expression.callee?.property?.name==='exposeInMainWorld' && node.expression.arguments[0]?.value==='development')?.expression;
+  const bridge=call?.arguments[1];
+  if(bridge?.type!=='ObjectExpression')throw Error('Missing development preload bridge');
+  if(bridge.properties.some(p=>p.key?.name==='appearance'||p.key?.value==='appearance'))return source;
+  // Add only this namespace; preserve file preview and other narrow interfaces.
+  return source.slice(0,bridge.start+1)+'\n'+`  appearance: {
+    get: () => electron.ipcRenderer.invoke("dev:appearance:get"),
+    importMedia: () => electron.ipcRenderer.invoke("dev:appearance:import"),
+    discardMedia: id => electron.ipcRenderer.invoke("dev:appearance:discard", id),
+    save: config => electron.ipcRenderer.invoke("dev:appearance:save", config),
+    onChanged: callback => {
+      const handler = (_event, value) => callback(value);
+      electron.ipcRenderer.on("dev:appearance:changed", handler);
+      return () => electron.ipcRenderer.removeListener("dev:appearance:changed", handler);
+    }
+  },`+source.slice(bridge.start+1);
+}
 export function patchAppearance() {
   const file=path.join(root,'src/renderer/assets/index-0LVJEr5c.js');
   let source=fs.readFileSync(file,'utf8');
@@ -127,26 +146,8 @@ export function patchAppearance() {
   const html=path.join(root,'src/renderer/index.html');let text=fs.readFileSync(html,'utf8');
   if(!text.includes('dev-appearance.css'))text=text.replace('</head>','<link rel="stylesheet" href="./assets/dev-appearance.css">\n  </head>');
   fs.writeFileSync(html,text);
-  const preload=path.join(root,'src/preload/index.js');let code=fs.readFileSync(preload,'utf8');
-  const start=code.indexOf('electron.contextBridge.exposeInMainWorld("development",');
-  if(start<0)throw Error('Missing development preload bridge');
-  // This bridge is the last statement in the baseline and development preload.
-  code=code.slice(0,start)+`electron.contextBridge.exposeInMainWorld("development", {
-  getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
-  getServiceAccess: () => electron.ipcRenderer.invoke("dev:service-access"),
-  appearance: {
-    get: () => electron.ipcRenderer.invoke("dev:appearance:get"),
-    importMedia: () => electron.ipcRenderer.invoke("dev:appearance:import"),
-    discardMedia: id => electron.ipcRenderer.invoke("dev:appearance:discard", id),
-    save: config => electron.ipcRenderer.invoke("dev:appearance:save", config),
-    onChanged: callback => {
-      const handler = (_event, value) => callback(value);
-      electron.ipcRenderer.on("dev:appearance:changed", handler);
-      return () => electron.ipcRenderer.removeListener("dev:appearance:changed", handler);
-    }
-  }
-});\n`;
-  fs.writeFileSync(preload,code);
+  const preload=path.join(root,'src/preload/index.js');
+  fs.writeFileSync(preload,patchAppearancePreload(fs.readFileSync(preload,'utf8')));
   console.log('Patched background settings and '+(marked.size+workbenchMarked.size)+' stable surfaces across main UI and workbench');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))patchAppearance();

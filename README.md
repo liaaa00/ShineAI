@@ -66,4 +66,7 @@ npm run package:win
 壁纸文字保持默认，按需开启 [手动文字效果](docs/MANUAL_TEXT.md)。同类开源项目的
 源码对照与后续优先级见 [整体优化分析](docs/PROJECT_OPTIMIZATION_2026-10-18.md)。
 
+内置技能修正、模型接入指引、社区市场重试与工作目录显示，见
+[可用性修正记录](docs/USABILITY_2026-10-18.md)。专项验证：`npm run smoke:usability`。
+
 本仓库的重建与改名不改变上游及第三方代码、资源的权利归属；保留原有许可文件。没有将整个重建工程重新声明为 MIT 授权。

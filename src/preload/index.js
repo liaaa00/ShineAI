@@ -2866,7 +2866,7 @@ electron.contextBridge.exposeInMainWorld("shineAI", {
     /** 获取 skills.sh 仓库列表 */
     listSkillRepos: () => electron.ipcRenderer.invoke(REGISTRY_LIST_SKILL_REPOS),
     /** 从 skills.sh 排行榜获取热门技能 */
-    fetchLeaderboard: () => electron.ipcRenderer.invoke(REGISTRY_FETCH_SKILLSSH_LEADERBOARD),
+    fetchLeaderboard: (options) => electron.ipcRenderer.invoke(REGISTRY_FETCH_SKILLSSH_LEADERBOARD, { force: options?.force === true }),
     /** 浠?skills.sh 仓库获取 skill 列表 */
     fetchSkillsSh: (owner, repo) => electron.ipcRenderer.invoke(REGISTRY_FETCH_SKILLS_SH, owner, repo),
     /** 获取 skills.sh skill 详情 */

@@ -1,0 +1,471 @@
+[
+  {
+    "id": "builtin-learn",
+    "name": "学会技能",
+    "description": "把刚才做成的事沉淀成可复用 Skill。可带一句提示，如 /learn 把打包流程做成 skill",
+    "category": "general",
+    "slashCommand": "learn",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "{{user_input}}",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-code-review",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "development",
+    "slashCommand": "code-review",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n1. **逻辑正确性** - 是否存在逻辑错误或边界情况未处理\n2. **性能** - 是否有性能瓶颈或可优化点\n3. **安全性** - 是否有安全漏洞（注入、越权、数据泄露等）\n4. **可读性** - 命名、注释、结构是否清晰\n5. **可维护性** - 是否符合最佳实践，是否便于扩展\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-translate",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "language",
+    "slashCommand": "translate",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "lang",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "中文",
+        "type": "select",
+        "options": [
+          "中文",
+          "英文",
+          "日语",
+          "韩语",
+          "法语",
+          "德语",
+          "西班牙语",
+          "俄语"
+        ]
+      }
+    ],
+    "promptTemplate": "请将以下内容翻译为{{lang}}，保持原文的语气、风格和格式：\n\n{{user_input}}\n\n\n- 专业术语保持准确\n- 专业术语保持准确\n- 如有歧义，优先参考上下文",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-explain",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "development",
+    "slashCommand": "explain",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n1. **整体功能**（1-2 句话概括）\n2. **关键逻辑步骤**（按执行顺序说明）\n3. **使用的主要技术/ģʽ**\n4. **潜在注意事项**（边界情况、副作用等）\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-write-test",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "development",
+    "slashCommand": "write-test",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "framework",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "jest",
+        "type": "select",
+        "options": [
+          "jest",
+          "vitest",
+          "mocha",
+          "pytest",
+          "unittest",
+          "go test",
+          "JUnit"
+        ]
+      }
+    ],
+    "promptTemplate": "请为以下代码使用 {{framework}} 编写完整的单元测试：\n\n{{user_input}}\n\n\n- 专业术语保持准确\n- 测试命名清晰描述意图（given-when-then 风格）\n- 使用 {{framework}} 的最佳实践\n- 包含必要的 mock 和 stub\n- 目标测试覆盖率 ≥ 80%",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-write-doc",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "documentation",
+    "slashCommand": "write-doc",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "style",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "JSDoc",
+        "type": "select",
+        "options": [
+          "JSDoc",
+          "TSDoc",
+          "Docstring (Python)",
+          "GoDoc",
+          "Markdown README"
+        ]
+      }
+    ],
+    "promptTemplate": "请为以下代码生成 {{style}} 格式的文档注释：\n\n{{user_input}}\n\n\n- 专业术语保持准确\n- 专业术语保持准确\n- 专业术语保持准确\n- 专业术语保持准确\n- 如有歧义，优先参考上下文",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-refactor",
+    "name": "代码审查",
+    "description": "对代码进行全面审查，涵盖逻辑、性能、安全性和可维护性",
+    "category": "development",
+    "slashCommand": "refactor",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n- **消除重复**（DRY 原则）\n- **简化复杂逻辑**（降低圈复杂度）\n- **简化复杂逻辑**（降低圈复杂度）\n- **简化复杂逻辑**（降低圈复杂度）\n\n\n1. 说明当前问题\n2. 解释重构理由\n3. 提供重构后的代码示例",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-commit-msg",
+    "name": "Commit Message",
+    "description": "根据代码改动生成规范的 Git commit message",
+    "category": "git",
+    "slashCommand": "commit-msg",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "请根据以下代码改动生成规范的 Git commit message：\n\n{{user_input}}\n\n\n- 遵循 Conventional Commits 规范：<type>(<scope>): <description>\n- type 选项：feat/fix/chore/docs/refactor/test/style/perf/ci\n- 标题简洁（中文 ≤ 30 字，英文 ≤ 72 字符）\n- 如有必要，添加详细描述（body）说明原因和影响\n- 如有歧义，优先参考上下文",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-debug",
+    "name": "Debug 协助",
+    "description": "分析错误信息和代码，帮助定位和解决 Bug",
+    "category": "development",
+    "slashCommand": "debug",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "promptTemplate": "请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n1. **分析可能的根本原因**（列出所有可能性，按可能性排序）\n2. **关键逻辑步骤**（按执行顺序说明）\n3. **给出具体的修复方案**（附代码示例）\n4. **潜在注意事项**（边界情况、副作用等）\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-cross-review",
+    "name": "代码审查",
+    "description": "同时使用 Claude + Codex 从不同角度审查代码，获取多维度分析",
+    "category": "development",
+    "slashCommand": "cross-review",
+    "type": "orchestration",
+    "compatibleProviders": [
+      "claude-code",
+      "codex"
+    ],
+    "orchestrationConfig": {
+      "steps": [
+        {
+          "name": "claude-review",
+          "providerId": "claude-code",
+          "promptTemplate": "作为资深代码审查专家，请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。"
+        },
+        {
+          "name": "codex-review",
+          "providerId": "codex",
+          "promptTemplate": "作为资深代码审查专家，请对以下代码进行全面审查：\n\n{{user_input}}\n\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。"
+        }
+      ],
+      "mergeStrategy": "concatenate",
+      "outputFormat": "请综合以上两个角度的审查意见，提炼出最关键的改进点。"
+    },
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-parallel-analysis",
+    "name": "代码审查",
+    "description": "使用 Claude + Gemini 并行分析问题，综合得出更全面的见解",
+    "category": "analysis",
+    "slashCommand": "parallel-analysis",
+    "type": "orchestration",
+    "compatibleProviders": [
+      "claude-code",
+      "gemini-cli"
+    ],
+    "orchestrationConfig": {
+      "steps": [
+        {
+          "name": "claude-analysis",
+          "providerId": "claude-code",
+          "promptTemplate": "作为资深代码审查专家，请对以下代码进行全面审查：\n\n{{user_input}}\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。"
+        },
+        {
+          "name": "gemini-analysis",
+          "providerId": "gemini-cli",
+          "promptTemplate": "作为资深代码审查专家，请对以下代码进行全面审查：\n\n{{user_input}}\n\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。"
+        }
+      ],
+      "mergeStrategy": "concatenate"
+    },
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-prompt-optimizer",
+    "name": "Prompt Optimizer",
+    "description": "单 Agent 提示词优化器，自动提炼 Goal Anchor 并在可用轮次内完成优化。",
+    "category": "development",
+    "slashCommand": "optimize-prompt",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "maxOptimizeRounds",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "5",
+        "type": "text"
+      },
+      {
+        "name": "threshold",
+        "description": "收敛阈值（1-10）",
+        "required": false,
+        "defaultValue": "8",
+        "type": "text"
+      },
+      {
+        "name": "lang",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "auto",
+        "type": "select",
+        "options": [
+          "auto",
+          "zh",
+          "en"
+        ]
+      }
+    ],
+    "promptTemplate": "你是专业的 Prompt Optimizer。\n\n## 原始提示词\n{{user_input}}\n\n## 原始提示词\n- 最大优化轮次：{{effectiveMaxRounds}}\n- Judge 阈值：{{threshold}} / 10\n- 输出语言：{{lang}}\n\n## 原始提示词\n\n\n## 原始提示词\n1. 先从原始提示词中提炼 Goal Anchor：核心目标、预期交付物、硬性约束、防漂移规则。\n2. 在最多 {{effectiveMaxRounds}} 轮内自我迭代优化，每轮都说明为什么修改。\n3. 每轮都做一次自检评分（1-10），并检查是否发生目标漂移。\n4. 如果你判断已经收敛，可以提前停止，不必凑满轮次。\n5. 若用户请求的轮次高于当前可用上限，严格以 {{effectiveMaxRounds}} 轮为准。\n\n## 原始提示词\n\n\n### Goal Anchor\n- 目标：...\n- 目标：...\n- 目标：...\n- 目标：...\n\n### 轮次记录\n- 第 1 轮：评分 / 主要改动 / 漂移风险\n- 第 2 轮：...\n\n### 最终 Prompt\n\n\n### 轮次记录\n- ...\n\n### 轮次记录\n- ...",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-prompt-optimizer-advanced",
+    "name": "Prompt Optimizer 高级版",
+    "description": "˫ Agent 编排：Optimizer + Judge 多轮收敛，适合 Pro+ 用户。",
+    "category": "development",
+    "slashCommand": "optimize-prompt-adv",
+    "type": "orchestration",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "maxOptimizeRounds",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "5",
+        "type": "text"
+      },
+      {
+        "name": "threshold",
+        "description": "Judge 收敛阈值（1-10）",
+        "required": false,
+        "defaultValue": "8",
+        "type": "text"
+      },
+      {
+        "name": "lang",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "auto",
+        "type": "select",
+        "options": [
+          "auto",
+          "zh",
+          "en"
+        ]
+      }
+    ],
+    "orchestrationConfig": {
+      "steps": [
+        {
+          "name": "optimizer-agent",
+          "providerId": "__parent__",
+          "promptTemplate": "你是 Optimizer Agent。\n\n\n{{user_input}}\n\n当前版本 prompt：\n{{current_prompt}}\n\nJudge 反馈：\n{{judge_feedback}}\n\n请只输出 JSON：\n{\n  \"optimizedPrompt\": \"string\",\n  \"changeSummary\": [\"string\"],\n  \"goalAnchor\": {\n    \"objective\": \"string\",\n    \"deliverables\": [\"string\"],\n    \"constraints\": [\"string\"],\n    \"antiDriftRules\": [\"string\"]\n  },\n  \"driftRisk\": \"low|medium|high\"\n}"
+        },
+        {
+          "name": "judge-agent",
+          "providerId": "__parent__",
+          "promptTemplate": "你是 Judge Agent。\n\n\n{{user_input}}\n\n当前版本 prompt：\n{{candidate_prompt}}\n\nGoal Anchor：\n{{goal_anchor}}\n\n阈值：{{threshold}} / 10\n\n请只输出 JSON：\n{\n  \"score\": 0,\n  \"passed\": false,\n  \"summary\": \"string\",\n  \"suggestions\": [\"string\"],\n  \"driftLabels\": [\"string\"],\n  \"driftSeverity\": \"none|low|medium|high\"\n}",
+          "dependsOn": [
+            "optimizer-agent"
+          ]
+        }
+      ],
+      "mergeStrategy": "last",
+      "outputFormat": "返回最终优化 Prompt 与每轮 Judge 结果摘要。"
+    },
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-cso-security-audit",
+    "name": "CSO 安全审计",
+    "description": "基于 OWASP Top 10 和 STRIDE 威胁建模的多阶段安全扫描，输出结构化安全报告",
+    "category": "security",
+    "slashCommand": "cso",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "scope",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "full",
+        "type": "select",
+        "options": [
+          "full",
+          "api-only",
+          "auth-only",
+          "data-flow"
+        ]
+      },
+      {
+        "name": "depth",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "standard",
+        "type": "select",
+        "options": [
+          "quick",
+          "standard",
+          "deep"
+        ]
+      }
+    ],
+    "promptTemplate": "你是一位资深安全工程师（CSO 级别），请对当前项目执行安全审计。\n\n## 原始提示词\n- 范围：{{scope}}\n- 深度：{{depth}}\n- 用户补充说明：{{user_input}}\n\n## ⚠️ 只读约束\n你只能读取和分析代码，**绝对不能修改任何文件**。所有发现仅以报告形式输出。\n\n## 阶段一：OWASP Top 10 扫描\n\n按以下清单逐项检查，每项给出 通过/警告/严重 状态：\n\n| # | 类别 | 检查要点 |\n|---|------|----------|\n| A01 | 失效的访问控制 | 越权访问、CORS 配置、路径遍历 |\n| A02 | 加密失败 | 明文存储密码/密钥、弱加密算法、硬编码凭证 |\n| A03 | 注入 | SQL/NoSQL/OS/LDAP 注入、未参数化查询 |\n| A04 | 不安全设计 | 缺少速率限制、业务逻辑缺陷 |\n| A05 | 安全配置错误 | 默认凭证、不必要的功能开放、错误详情泄露 |\n| A06 | 脆弱过时组件 | 已知 CVE 的依赖、未锁定版本 |\n| A07 | 身份认证失败 | 弱密码策略、会话管理缺陷、缺少 MFA |\n| A08 | 数据完整性失败 | 不安全的反序列化、未验证的更新管道 |\n| A09 | 日志监控不足 | 缺少审计日志、敏感操作无记录 |\n| A10 | SSRF | 未验证的外部请求、内部服务暴露 |\n\n## 阶段二：STRIDE 威胁建模\n\n对关键组件执行 STRIDE 分析：\n\n- **S (Spoofing 欺骗)**：身份伪造风险\n- **T (Tampering 篡改)**：数据/配置被篡改风险\n- **R (Repudiation 否认)**：操作不可追溯风险\n- **I (Info Disclosure 信息泄露)**：敏感数据暴露风险\n- **D (Denial of Service 拒绝服务)**：资源耗尽/阻塞风险\n- **E (Elevation of Privilege 提权)**：权限提升风险\n\n## 原始提示词\n\n\n- quick：仅报告置信度 ≥ 8/10 的发现（高确定性问题）\n- standard：报告置信度 ≥ 5/10 的发现\n- deep：报告置信度 ≥ 2/10 的发现（含潜在风险）\n\n## 原始提示词\n\n### 📊 安全审计摘要\n- 目标：...\n- 目标：...\n- 严重/高/中/低 发现数量\n\n### 📊 安全审计摘要\n\n- **位置**：`文件路径:行号`\n- **类别**：OWASP 编号 或 STRIDE 类型\n- **简化复杂逻辑**（降低圈复杂度）\n- **置信度**：X/10\n- **简化复杂逻辑**（降低圈复杂度）\n- **简化复杂逻辑**（降低圈复杂度）\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-retro",
+    "name": "代码审查",
+    "description": "基于 Git 历史的工程复盘分析，包含工作会话检测、贡献分析和改进建议",
+    "category": "development",
+    "slashCommand": "retro",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "window",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "7d",
+        "type": "select",
+        "options": [
+          "24h",
+          "7d",
+          "14d",
+          "30d"
+        ]
+      },
+      {
+        "name": "mode",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "standard",
+        "type": "select",
+        "options": [
+          "standard",
+          "compare"
+        ]
+      }
+    ],
+    "promptTemplate": "请对以下代码进行全面审查：\n\n## 原始提示词\n- 时间窗口：{{window}}\n- 模式：{{mode}}（standard=单期分析，compare=与前一同等周期对比）\n- 用户补充说明：{{user_input}}\n\n## 原始提示词\n\n请执行以下 Git 命令收集数据（根据时间窗口调整 --since 参数）：\n\n1. `git log --oneline --since=\"{{window}} ago\" --no-merges` — 提交列表\n2. `git shortlog -sn --since=\"{{window}} ago\" --no-merges` — 贡献者排行\n3. `git diff --stat HEAD~$(git rev-list --count --since=\"{{window}} ago\" HEAD)..HEAD` — 变更统计\n4. 如果 mode=compare，额外采集前一周期的同类数据进行对比\n\n## 原始提示词\n\n\n\n| 指标 | 说明 |\n|------|------|\n| 总提交数 | 非 merge 提交数量 |\n| 指标 | 说明 |\n| 代码变更量 | 插入行数 / 删除行数 / 净增行数 |\n| 测试覆盖比 | test 相关提交占比 |\n| 活跃天数 | 有提交的天数 / 总天数 |\n\n## 原始提示词\n\n按 Conventional Commits 规范分类统计：\n\n- **feat**：新功能\n- **fix**：Bug 修复\n- **refactor**：重构\n- **test**：测试\n- **chore**：构建/工具/依赖\n- **docs**：文档\n- **other**：不符合规范的提交\n\n## 原始提示词\n\n根据提交时间间隔识别工作会话（45 分钟无提交视为会话断开）：\n\n- **Deep Session（深度）**：持续 > 50 分钟\n- **Medium Session（中等）**：20-50 分钟\n- **Micro Session（微型）**：< 20 分钟\n\n\n\n## 第五步：Per-Person 贡献分析\n\n\n- 专业术语保持准确\n- 主要提交类型（feat/fix/refactor...）\n- 专业术语保持准确\n- 专业术语保持准确\n\n## 原始提示词\n\n### 🐦 一句话总结（可发推文，≤ 140 字）\n\n### 📊 安全审计摘要\n（表格呈现上述指标，compare 模式包含对比列和变化率）\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n- Deep/Medium/Micro 会话数和占比\n- 专业术语保持准确\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n基于数据给出 3-5 条具体可行的改进建议，例如：\n- 测试覆盖率偏低 → 建议引入提交前测试检查\n- 测试覆盖率偏低 → 建议引入提交前测试检查\n- 某类提交占比异常 → 分析原因和改进方向",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-office-hours",
+    "name": "代码审查",
+    "description": "结构化产品思考框架，通过 6 个强制提问帮助验证产品方向和设计决策",
+    "category": "analysis",
+    "slashCommand": "office-hours",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "mode",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "startup",
+        "type": "select",
+        "options": [
+          "startup",
+          "builder"
+        ]
+      }
+    ],
+    "promptTemplate": "请对以下代码进行全面审查：\n\n## 模式：{{mode}}\n## 用户描述：{{user_input}}\n\n---\n\n## Startup 模式（验证产品方向）\n\n如果 mode=startup，请依次回答以下 6 个强制问题，每个问题必须有深度分析：\n\n### Q1: 需求真实性验证\n\"这个需求是真实存在的，还是你假设它存在？\"\n- 专业术语保持准确\n- 专业术语保持准确\n- 你是否与 ≥ 5 个潜在用户深入交谈过？\n\n### Q2: 现状替代方案\n\"这个需求是真实存在的，还是你假设它存在？\"\n- 列出所有现有替代方案（含非软件方案如 Excel、手动流程）\n- 用户对现有方案最不满的 1-2 点是什么？\n- 如果你的产品不存在，用户会怎么办？（如果答案是\"没什么影响\"，这是危险信号）\n\n### Q3: 绝望用户画像\n\"这个需求是真实存在的，还是你假设它存在？\"\n- 专业术语保持准确\n- 专业术语保持准确\n- 专业术语保持准确\n\n### Q4: 最窄楔子\n\"这个需求是真实存在的，还是你假设它存在？\"\n- 不是 MVP（最小可行产品），而是 MLP（最小可爱产品）\n- 专业术语保持准确\n- 专业术语保持准确\n\n### Q5: 用户观察\n\"这个需求是真实存在的，还是你假设它存在？\"\n- 用户的实际工作流程 vs 你假设的流程有何差异？\n- 专业术语保持准确\n- 专业术语保持准确\n\n### Q6: 3 年适配性\n\"3 年后这个产品还有意义吗？\"\n- 专业术语保持准确\n- 专业术语保持准确\n- 专业术语保持准确\n\n## Builder 模式（优化产品设计）\n\n如果 mode=builder，请回答以下问题：\n\n### B1: 最酷版本\n\"这个需求是真实存在的，还是你假设它存在？\"\n\n### B2: Whoa 时刻\n\"谁会在看到这个产品后说 'whoa'？\"\n- 专业术语保持准确\n- 专业术语保持准确\n\n### B3: 最快路径\n\"从现在到让第一个用户说 'whoa' 的最快路径是什么？\"\n- 专业术语保持准确\n- 专业术语保持准确\n\n### B4: 10x 版本\n\"这个产品比现有方案好 10 倍的点在哪里？\"\n- 不是好一点，是好 10 倍\n- 如果找不到 10x 的点，也许方向需要调整\n\n---\n\n## 原始提示词\n\n\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n| 维度 | 现有方案 | 你的方案 | 优势倍数 |\n|------|---------|---------|---------|\n\n### 📊 安全审计摘要\n\n\n### 📊 安全审计摘要\n如何触达前 100 个用户\n\n### 📊 安全审计摘要\n请以结构化格式输出审查结果，并给出具体的改进建议（附代码示例）。",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  },
+  {
+    "id": "builtin-benchmark",
+    "name": "代码审查",
+    "description": "采集 Web/API/Bundle 性能指标，与基线对比检测性能回归",
+    "category": "development",
+    "slashCommand": "benchmark",
+    "type": "prompt",
+    "compatibleProviders": "all",
+    "inputVariables": [
+      {
+        "name": "target",
+        "description": "目标 URL 或本地路径",
+        "required": true,
+        "type": "text"
+      },
+      {
+        "name": "metrics",
+        "description": "目标语言",
+        "required": false,
+        "defaultValue": "web",
+        "type": "select",
+        "options": [
+          "web",
+          "api",
+          "bundle"
+        ]
+      }
+    ],
+    "promptTemplate": "请对以下代码进行全面审查：\n\n## 原始提示词\n- 目标：{{target}}\n- 指标类型：{{metrics}}\n- 用户补充说明：{{user_input}}\n\n---\n\n## Web 指标采集（metrics=web）\n\n### 核心 Web Vitals\n\n| 维度 | 现有方案 | 你的方案 | 优势倍数 |\n|------|------|---------|-----------|\n| TTFB | Time to First Byte | < 200ms | < 600ms |\n| FCP | First Contentful Paint | < 1.8s | < 3.0s |\n| LCP | Largest Contentful Paint | < 2.5s | < 4.0s |\n| DOM Interactive | DOM 可交互时间 | < 3.0s | < 5.0s |\n| Full Load | 完全加载时间 | < 5.0s | < 10.0s |\n| CLS | Cumulative Layout Shift | < 0.1 | < 0.25 |\n| INP | Interaction to Next Paint | < 200ms | < 500ms |\n\n### 轮次记录\n- 列出 Top 15 最慢加载资源（URL、类型、大小、耗时）\n- JS Bundle 总大小和各 chunk 大小\n- CSS 总大小\n- 专业术语保持准确\n- 专业术语保持准确\n\n## API 指标采集（metrics=api）\n\n对目标 API 端点执行性能测试：\n- 响应时间（P50/P90/P99）\n- 吞吐量（RPS）\n- 专业术语保持准确\n- 专业术语保持准确\n\n## Bundle 分析（metrics=bundle）\n\n\n- 各 entry point 的 bundle 大小（原始/gzip/brotli）\n- Tree-shaking 效果评估\n- 专业术语保持准确\n- 大模块 Top 10（按大小排序）\n\n---\n\n## 原始提示词\n\n\n\n### 轮次记录\n\n| 级别 | 条件 | 处理方式 |\n|------|------|---------|\n| 🔴 严重 | 指标劣化 > 50% 或绝对值增加 > 500ms | 必须修复后才能发布 |\n| 🟡 警告 | 指标劣化 > 20% | 建议修复，需评估影响 |\n| 🟢 通过 | 指标在 20% 波动内 | 正常范围 |\n| 🔵 改善 | 指标优化 > 10% | 标记为正向变化 |\n\nBundle 大小回归阈值：增加 > 25% 视为严重。\n\n### 轮次记录\n\n对每个指标输出：当前值 vs 基线值 → 变化率 → 严重程度\n\n---\n\n## 原始提示词\n\n### 📊 安全审计摘要\n一句话总结整体性能状况（优秀/良好/需优化/严重问题）\n\n### 📊 安全审计摘要\n| 指标 | 当前值 | 基线值 | 变化 | ״̬ |\n|------|-------|-------|------|------|\n\n### 🐌 Top 5 性能瓶颈\n\n- 专业术语保持准确\n- 影响量化（节省 Xms / 减少 XKB）\n- 专业术语保持准确\n\n### 📦 资源分析（web/bundle 模式）\n详细的资源加载和 bundle 分析\n\n### 📊 安全审计摘要\n严重/警告/通过/改善 的条目清单\n\n### 📊 安全审计摘要\n按 ROI 排序的优化建议（预期收益 / 实施成本）",
+    "isInstalled": true,
+    "isEnabled": true,
+    "source": "builtin"
+  }
+]
