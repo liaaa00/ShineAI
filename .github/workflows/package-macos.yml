@@ -12,9 +12,9 @@ on:
         default: build-inputs-v1
         type: string
       dependency_sha256:
-        description: Verified SHA-256 of runtime-dependencies.zip
+        description: Verified SHA-256 of runtime-dependencies-ci.zip
         required: false
-        default: '73927d3d60ac5c86fe5a48723f46b0a351b01f1f8be61eff9ff5712678419869'
+        default: '47c608438c97af8a96533e4ff66c6c78f90586d59cf0ec3cd9b396e71d47b015'
         type: string
       reuse_run_id:
         description: Optional previous run with identical application source (test-only fixes)
@@ -28,7 +28,7 @@ on:
         type: string
       dependency_sha256:
         required: false
-        default: '73927d3d60ac5c86fe5a48723f46b0a351b01f1f8be61eff9ff5712678419869'
+        default: '47c608438c97af8a96533e4ff66c6c78f90586d59cf0ec3cd9b396e71d47b015'
         type: string
       dependency_release_tag:
         required: false
@@ -65,9 +65,9 @@ jobs:
           EXPECTED_SHA: ${{ inputs.dependency_sha256 }}
         run: |
           mkdir -p artifacts/input
-          gh release download "$RELEASE_TAG" --pattern 'runtime-dependencies.zip' --dir artifacts/input
-          echo "$EXPECTED_SHA  artifacts/input/runtime-dependencies.zip" | shasum -a 256 -c -
-          unzip -q artifacts/input/runtime-dependencies.zip
+          gh release download "$RELEASE_TAG" --pattern 'runtime-dependencies-ci.zip' --dir artifacts/input
+          echo "$EXPECTED_SHA  artifacts/input/runtime-dependencies-ci.zip" | shasum -a 256 -c -
+          unzip -q artifacts/input/runtime-dependencies-ci.zip
       - name: Restore platform CLIs and packaging tools
         env:
           TARGET_ARCH: ${{ matrix.arch }}

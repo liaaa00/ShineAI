@@ -16,7 +16,7 @@
 
 根目录应用依赖来自经过校验的快照，不能用根目录 `npm install` 替换 ABI 149 原生模块。
 
-- Mac 使用持久保存的草稿 `build-inputs-v1` 中的 `runtime-dependencies.zip`。它是可复用
+- Mac 使用持久保存的草稿 `build-inputs-v1` 中的 `runtime-dependencies-ci.zip`。它是可复用
   的构建依赖，不是安装包；不要删除这个草稿或附件。每次使用都会校验固定 SHA-256。
 - Windows 从 `scripts/packaging/release-inputs.json` 指定的旧版安装器恢复固定运行时、
   应用依赖和未跟踪的大型资源。下载后先验证固定 SHA-256，只恢复允许的目录。

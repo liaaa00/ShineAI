@@ -34,7 +34,6 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     env:
-      GH_TOKEN: ${{ github.token }}
       SHINEAI_TEST_LANGUAGE: zh-CN
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +42,8 @@ jobs:
           node-version: 24
       - name: Restore pinned packaging and test tools
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           New-Item -ItemType Directory -Force .runtime/packaging | Out-Null
           Copy-Item scripts/packaging/package*.json .runtime/packaging/
@@ -75,8 +76,12 @@ jobs:
       - name: Attach verified Windows installer to the draft
         shell: pwsh
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
-        run: gh release upload "$env:RELEASE_TAG" artifacts/installer/*-setup.exe artifacts/installer/*.sha256
+        run: |
+          $files = @(Get-ChildItem -Path artifacts/installer/*-setup.exe, artifacts/installer/*.sha256 -File | ForEach-Object { $_.FullName })
+          if ($files.Count -ne 2) { throw 'Expected one Windows installer and its checksum' }
+          gh release upload "$env:RELEASE_TAG" @files
   macos:
     needs: prepare
     uses: ./.github/workflows/package-macos.yml

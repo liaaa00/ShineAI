@@ -10,7 +10,7 @@ Windows 安装器使用原有 NSIS 流程；Mac 安装器由 GitHub Actions 的�
 日常发布使用 [统一 GitHub 发布流程](GITHUB_RELEASES.md)：在 Actions 运行
 `Build and release desktop installers`，Windows 和两种 Mac 会自动构建、检查和发布。
 下面的快照准备只在首次设置或依赖升级时需要；当前快照已持久保存在 `build-inputs-v1`
-草稿中，后续界面改动不需要重新上传。
+草稿的 `runtime-dependencies-ci.zip` 中，后续界面改动不需要重新上传。
 
 根目录依赖不能用普通 `npm install` 替换。当前项目仍依赖校验过的发布依赖快照。
 维护者在完整 Windows 工程运行 `node scripts/prepare-release-input.mjs`，生成不含 profile、
