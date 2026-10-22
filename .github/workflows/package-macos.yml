@@ -68,7 +68,13 @@ jobs:
           REUSE_RUN_ID: ${{ inputs.reuse_run_id }}
           TARGET_ARCH: ${{ matrix.arch }}
         run: |
-          gh run download "$REUSE_RUN_ID" --name "ShineAI-macos-$TARGET_ARCH" --dir artifacts/installer-mac
+          for attempt in {1..20}; do
+            if gh run download "$REUSE_RUN_ID" --name "ShineAI-macos-$TARGET_ARCH" --dir artifacts/installer-mac; then
+              break
+            fi
+            sleep 15
+          done
+          test -f artifacts/installer-mac/package-report.json
           cd artifacts/installer-mac
           shasum -a 256 -c ./*.sha256
           cd ../..
