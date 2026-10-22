@@ -5,10 +5,18 @@ import { execFileSync } from 'node:child_process';
 import { root, openTestApp, completeOnboarding } from './electron-test-helper.mjs';
 const report = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/installer-mac/package-report.json'), 'utf8'));
 const checks = {};
-const exe = report.executable;
+// Test the app inside the generated DMG, rather than just the staging directory.
+const installRoot = path.join(root, '.test-data/mac-installer-' + Date.now());
+const mount = path.join(installRoot, 'volume');
+fs.mkdirSync(mount, { recursive: true });
+execFileSync('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, report.files.find(f => f.endsWith('.dmg'))], { timeout: 120000 });
+try {
+  execFileSync('ditto', [path.join(mount, 'ShineAI.app'), path.join(installRoot, 'ShineAI.app')]);
+} finally { execFileSync('hdiutil', ['detach', mount], { timeout: 120000 }); }
+const exe = path.join(installRoot, 'ShineAI.app/Contents/MacOS/ShineAI');
 const appRoot = path.resolve(path.dirname(exe), '../Resources/app');
 const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' };
-const native = execFileSync(exe, ['-e', `const r=require('node:module').createRequire(${JSON.stringify(path.join(appRoot, 'package.json'))}); const d=new (r('better-sqlite3'))(':memory:'); if(d.prepare('select 42 as n').get().n!==42)process.exit(2);d.close();const p=r('node-pty').spawn('/bin/sh',['-c','echo shineai-pty-ok'],{env:process.env});let out='';p.onData(s=>out+=s);p.onExit(e=>process.exit(e.exitCode||!out.includes('shineai-pty-ok')));setTimeout(()=>process.exit(3),15000).unref();`], { env, timeout: 25000 });
+execFileSync(exe, ['-e', `const r=require('node:module').createRequire(${JSON.stringify(path.join(appRoot, 'package.json'))}); const d=new (r('better-sqlite3'))(':memory:'); if(d.prepare('select 42 as n').get().n!==42)process.exit(2);d.close();const p=r('node-pty').spawn('/bin/sh',['-c','echo shineai-pty-ok'],{env:process.env});let out='';p.onData(s=>out+=s);p.onExit(e=>process.exit(e.exitCode || (out.includes('shineai-pty-ok')?0:1)));setTimeout(()=>process.exit(3),15000).unref();`], { env, timeout: 25000 });
 checks.nativeDatabaseAndRealTerminal = true;
 for (const cli of ['@anthropic-ai/claude-agent-sdk/cli.js', '@openai/codex/bin/codex.js']) {
   const version = execFileSync(exe, [path.join(appRoot, 'node_modules', cli), '--version'], { env, timeout: 60000 }).toString().trim();
