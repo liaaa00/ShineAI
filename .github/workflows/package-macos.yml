@@ -36,7 +36,8 @@ jobs:
           EXPECTED_SHA: ${{ inputs.dependency_sha256 }}
         run: |
           mkdir -p artifacts/input
-          gh release download "$RELEASE_TAG" --pattern runtime-dependencies.zip --dir artifacts/input
+          gh release download "$RELEASE_TAG" --pattern 'runtime-dependencies.zip.part-*' --dir artifacts/input
+          cat artifacts/input/runtime-dependencies.zip.part-* > artifacts/input/runtime-dependencies.zip
           echo "$EXPECTED_SHA  artifacts/input/runtime-dependencies.zip" | shasum -a 256 -c -
           unzip -q artifacts/input/runtime-dependencies.zip
       - name: Restore platform CLIs and packaging tools
