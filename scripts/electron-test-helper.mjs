@@ -22,7 +22,9 @@ export async function completeOnboarding(page) {
   const checkbox = page.locator('[data-onboarding-wizard-container] input[type=checkbox]').first();
   await checkbox.waitFor({ state: 'visible', timeout: 30000 });
   await checkbox.check({ force: true });
-  await page.getByRole('button', { name: /进入开发工作台|登录并开始|继续设置/ }).first().click();
+  // The risk step has one primary continue button. Its label follows the OS
+  // locale (Mac CI starts in English), so do not tie navigation to Chinese text.
+  await page.locator('[data-onboarding-wizard-container][data-wizard-step="risk"]').getByRole('button').last().click();
   await page.locator('[data-onboarding-wizard-container]').waitFor({ state: 'hidden', timeout: 30000 });
 }
 export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082 }, executablePath, extraEnv = {}) {

@@ -9,7 +9,8 @@ const checks = {};
 const installRoot = path.join(root, '.test-data/mac-installer-' + Date.now());
 const mount = path.join(installRoot, 'volume');
 fs.mkdirSync(mount, { recursive: true });
-execFileSync('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, report.files.find(f => f.endsWith('.dmg'))], { timeout: 120000 });
+const image = path.join(root, 'artifacts/installer-mac', path.basename(report.files.find(f => f.endsWith('.dmg'))));
+execFileSync('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, image], { timeout: 120000 });
 try {
   execFileSync('ditto', [path.join(mount, 'ShineAI.app'), path.join(installRoot, 'ShineAI.app')]);
 } finally { execFileSync('hdiutil', ['detach', mount], { timeout: 120000 }); }
