@@ -1,4 +1,4 @@
-// Restore the pinned Windows runtime from a verified published installer.
+// Restore pinned dependencies from a verified installer and the stock Electron runtime.
 // Application source always comes from checkout; never npm-install root dependencies.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,10 +30,16 @@ for (const relative of ['node_modules', 'resources/git-bash', 'resources/runtime
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.renameSync(path.join(app, relative), target);
 }
-// Remove the old application only inside this newly extracted runtime.
-fs.rmSync(app, { recursive: true });
-fs.renameSync(path.join(unpacked, 'ShineAI.exe'), path.join(unpacked, 'electron.exe'));
-fs.renameSync(unpacked, path.join(root, '.runtime/electron'));
+// Packaged Electron omits default_app.asar and cannot launch the checkout.
+// Restore the stock archive instead, using the existing pinned checksum and
+// path validation shared with local runtime restoration.
+fs.rmSync(unpacked, { recursive: true });
+fs.rmSync(archive);
+const runtimeArchive = path.join(root, '.runtime/electron-v44.5.1-win32-x64.zip');
+execFileSync('curl.exe', ['--fail', '--location', '--retry', '3', '--output', runtimeArchive, 'https://github.com/electron/electron/releases/download/v44.5.1/electron-v44.5.1-win32-x64.zip'], { stdio: 'inherit' });
+execFileSync('python', [path.join(root, 'scripts/restore-runtime.py')], { stdio: 'inherit' });
+if (!fs.existsSync(path.join(root, '.runtime/electron/resources/default_app.asar'))) throw Error('Stock Electron bootstrap is missing');
+fs.rmSync(runtimeArchive);
 const editor = path.join(root, '.runtime/packaging/rcedit-x64.exe');
 execFileSync('curl.exe', ['--fail', '--location', '--retry', '3', '--output', editor, 'https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe'], { stdio: 'inherit' });
 const expected = fs.readFileSync(path.join(root, 'scripts/packaging/rcedit.sha256'), 'utf8').trim();
