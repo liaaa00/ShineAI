@@ -1,0 +1,39 @@
+name: Prepare pinned build dependencies
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: provision-build-dependencies
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore verified published dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .runtime/packaging | Out-Null
+          Copy-Item scripts/packaging/package*.json .runtime/packaging/
+          npm ci --prefix .runtime/packaging --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/restore-ci-windows.mjs
+      - name: Create redistributable-only dependency archive
+        run: node scripts/prepare-release-input.mjs
+      - name: Persist input and publish its checksum in the job summary
+        shell: pwsh
+        run: |
+          Rename-Item artifacts/release-input/runtime-dependencies.zip runtime-dependencies-ci.zip
+          $hash = (Get-FileHash artifacts/release-input/runtime-dependencies-ci.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  runtime-dependencies-ci.zip" | Set-Content -Encoding utf8NoBOM artifacts/release-input/runtime-dependencies-ci.zip.sha256
+          gh release upload build-inputs-v1 artifacts/release-input/runtime-dependencies-ci.zip artifacts/release-input/runtime-dependencies-ci.zip.sha256
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "Dependency SHA-256: $hash" | Add-Content $env:GITHUB_STEP_SUMMARY
