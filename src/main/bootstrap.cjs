@@ -44,7 +44,12 @@ installCloudIpcPolicy(ipcMain);
 installCloudNetworkPolicy(app);
 registerRuntimeInfo({ ipcMain, config });
 registerServiceAccess(ipcMain, config);
+require('./extensions/request-diagnostics.cjs').register(ipcMain);
+require('./extensions/running-input.cjs').register(ipcMain);
 require('./extensions/appearance.cjs').registerAppearance({app,ipcMain,config,...require('electron')});
+require('./extensions/pet-persona.cjs').registerPetPersona({app,ipcMain,config,...require('electron')});
+require('./extensions/startup-screen.cjs').registerStartupScreen({app,ipcMain,config,...require('electron')});
+require('./extensions/startup-window.cjs').registerStartupWindow({app,ipcMain,config,...require('electron')});
 ipcMain.on('dev:preload-info', event => { event.returnValue = { cwd: root, home: require('node:os').homedir() }; });
 app.on('browser-window-created', (_event, window) => {
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(config.title); });

@@ -39,6 +39,9 @@ npm run e2e:local
 npm run package:win
 ```
 
+Mac 的 Apple Silicon / Intel 安装包由原生 macOS GitHub Actions 构建，流程、验证范围与
+首次打开说明见 [macOS 打包](docs/MACOS_PACKAGING.md)。请按 Release 日期和提交号区分同为 1.0.6 的安装包。
+
 `check` 包含单元、构建、真实 Electron 窗口、隔离边界、云服务移除、Codex 模拟中转和本地响应检查。`e2e:local` 覆盖项目、文件、Git、真实终端与重启保存；这些检查不使用用户的模型密钥。`npm run e2e` 会调用已配置模型，需自行选择执行。
 
 安装包输出为 `artifacts/installer/ShineAI-1.0.6-windows-x64-setup.exe`。打包工具首次准备步骤见 [安装与打包](docs/INSTALLER.md)。已有旧名称安装包不会因修改源码而自动更新。

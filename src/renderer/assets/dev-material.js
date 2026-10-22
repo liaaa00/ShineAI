@@ -56,7 +56,7 @@ function splitSelectors(value) {
 function scopedSelector(value) {
   return splitSelectors(value).map(selector => {
     selector = selector.trim();
-    if (/^(?:html|body|:root)$/.test(selector) || /#dev-background|#dev-edition-banner|#root\b|data-appearance-surface|data-dev-inline|dev-background-|dev-preview-(?:picture|mask)/.test(selector)) return '';
+    if (/^(?:html|body|:root)$/.test(selector) || /#shine-startup\b|#dev-background|#dev-edition-banner|#root\b|data-appearance-surface|data-dev-inline|dev-background-|dev-preview-(?:picture|mask)/.test(selector)) return '';
     // Keep pseudo-elements at the end; :is(::before) would be invalid CSS.
     const pseudo = selector.match(/::[\w-]+(?:\([^)]*\))?$/)?.[0] || '';
     const base = pseudo ? selector.slice(0, -pseudo.length) : selector;
@@ -116,7 +116,7 @@ function rebuild() {
 }
 function schedule() { if (!scheduled) { scheduled = true; requestAnimationFrame(rebuild); } }
 function adaptInline(element) {
-  if (!(element instanceof HTMLElement) || element.closest('#dev-background,#dev-edition-banner') || element.matches('.dev-preview-picture,.dev-preview-mask,[role="img"],[role="progressbar"],.cn-dot,.cn-last')) return;
+  if (!(element instanceof HTMLElement) || element.closest('#shine-startup,#dev-background,#dev-edition-banner') || element.matches('.dev-preview-picture,.dev-preview-mask,[role="img"],[role="progressbar"],.cn-dot,.cn-last')) return;
   let color = element.style.backgroundColor;
   if (!color && CSS.supports('color', element.style.background)) color = element.style.background;
   const image = element.style.backgroundImage;

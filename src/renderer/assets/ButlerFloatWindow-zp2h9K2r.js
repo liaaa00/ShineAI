@@ -384,6 +384,7 @@ function ButlerFloatWindow() {
     return () => releaseTeamListener();
   }, [acquireTeamListener, loadTeamInstances, releaseTeamListener]);
   reactExports.useEffect(() => {
+    document.documentElement.dataset.butlerView = showPopover ? "expanded" : toastIntervention ? "toast" : "avatar";
     if (showPopover) {
       window.shineAI?.butler?.resizeFloatWindow?.(FLOAT_WINDOW_EXPANDED_WIDTH, FLOAT_WINDOW_EXPANDED_HEIGHT);
     } else if (toastIntervention) {
@@ -723,7 +724,7 @@ function ButlerFloatWindow() {
                 title: t("floatWindow.dragToMove"),
                 children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(ClipboardList, { size: 15, className: "shrink-0 text-[var(--v2-accent)]" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm font-medium text-[var(--v2-text-primary)]", children: t("floatWindow.cockpitTitle", { name: persona.name }) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm font-medium text-[var(--v2-text-primary)]", children: `${persona.name && persona.name !== "Butler" ? persona.name : instance.language.startsWith("zh") ? "小光" : "Assistant"} · ${instance.language.startsWith("zh") ? "任务总览" : "Overview"}` }),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "rounded bg-accent-green/25 px-1.5 py-0.5 text-tiny text-accent-green", children: t("floatWindow.badge") })
                 ]
               }

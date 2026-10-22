@@ -8,6 +8,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "package:win": "npm run check && node scripts/package-windows.mjs",
+    "package:mac": "npm run build && node scripts/package-macos.mjs",
+    "test:mac-package": "node scripts/macos-package-smoke.mjs",
     "test:installer": "node scripts/installer-smoke.mjs",
     "test:installer-payload": "node scripts/installer-payload-smoke.mjs",
     "test": "node --test test",
@@ -38,7 +40,9 @@
     "restore:dependencies": "python scripts/restore-dependencies.py",
     "decode:upstream": "node scripts/decode-main.mjs && node scripts/apply-dev-transforms.mjs",
     "verify:baseline": "python scripts/verify-baseline.py",
-    "verify:reproducible": "node scripts/verify-reproducibility.mjs"
+    "verify:reproducible": "node scripts/verify-reproducibility.mjs",
+    "smoke:startup": "node scripts/startup-screen-smoke.mjs",
+    "smoke:diagram": "node scripts/diagram-viewer-smoke.mjs"
   },
   "engines": {
     "node": ">=20"

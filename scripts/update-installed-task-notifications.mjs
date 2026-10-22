@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {patchTaskNotificationsMain, patchTaskNotificationsPreload} from './patch-task-notifications.mjs';
+import {patchTaskNotificationsMain, patchTaskNotificationsPreload, patchTaskNotificationsRenderer} from './patch-task-notifications.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (!process.argv[2]) throw new Error('Pass the independent application installation directory');
 const install = path.resolve(process.argv[2]);
@@ -16,7 +16,10 @@ const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const inputs = new Map([
   ['main/index.js', Buffer.from(patchTaskNotificationsMain(fs.readFileSync(path.join(output, 'main/index.js'), 'utf8')))],
   ['preload/index.js', Buffer.from(patchTaskNotificationsPreload(fs.readFileSync(path.join(output, 'preload/index.js'), 'utf8')))],
-  ['main/extensions/task-notifications.cjs', fs.readFileSync(path.join(root, 'out/main/extensions/task-notifications.cjs'))]
+  ['renderer/assets/index-0LVJEr5c.js', Buffer.from(patchTaskNotificationsRenderer(fs.readFileSync(path.join(output, 'renderer/assets/index-0LVJEr5c.js'), 'utf8')))],
+  ['renderer/assets/dev-task-notifications.mjs', fs.readFileSync(path.join(root, 'out/renderer/assets/dev-task-notifications.mjs'))],
+  ['main/extensions/task-notifications.cjs', fs.readFileSync(path.join(root, 'out/main/extensions/task-notifications.cjs'))],
+  ['main/extensions/task-completion-policy.cjs', fs.readFileSync(path.join(root, 'out/main/extensions/task-completion-policy.cjs'))]
 ]);
 const changes = [];
 for (const [relative, bytes] of inputs) {

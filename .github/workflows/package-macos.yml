@@ -1,0 +1,68 @@
+name: Package macOS
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Draft release containing the dependency snapshot
+        required: true
+        type: string
+      dependency_sha256:
+        description: Verified SHA-256 of runtime-dependencies.zip
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore verified dependency snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          EXPECTED_SHA: ${{ inputs.dependency_sha256 }}
+        run: |
+          mkdir -p artifacts/input
+          gh release download "$RELEASE_TAG" --pattern runtime-dependencies.zip --dir artifacts/input
+          echo "$EXPECTED_SHA  artifacts/input/runtime-dependencies.zip" | shasum -a 256 -c -
+          unzip -q artifacts/input/runtime-dependencies.zip
+      - name: Restore platform CLIs and packaging tools
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          test "$(node -p process.arch)" = "$TARGET_ARCH"
+          mkdir -p .runtime/packaging .runtime/mac-cli
+          cp scripts/packaging/package*.json .runtime/packaging/
+          npm ci --prefix .runtime/packaging --no-audit --no-fund
+          npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
+          npm install --prefix .runtime/mac-cli --no-audit --no-fund "@openai/codex@0.156.1-darwin-$TARGET_ARCH"
+          mv .runtime/mac-cli/node_modules/@openai/codex "node_modules/@openai/codex-darwin-$TARGET_ARCH"
+          npm run build
+      - name: Build DMG and ZIP
+        run: node scripts/package-macos.mjs
+      - name: Exercise packaged app
+        run: node scripts/macos-package-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ShineAI-macos-${{ matrix.arch }}
+          path: artifacts/installer-mac/
+          if-no-files-found: warn
+      - name: Upload tested installation images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber

@@ -1,0 +1,18 @@
+.mermaid-block__toolbar{flex-wrap:wrap}
+.mermaid-block__views{flex-shrink:0;white-space:nowrap}
+.mermaid-block__actions{flex:1 1 auto}
+.mermaid-block__actions button{white-space:nowrap}
+.dev-diagram-viewer{position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:12px;box-sizing:border-box;border:0;background:transparent;color:var(--color-text-primary);outline:none;overflow:hidden}
+.dev-diagram-viewer[open]{display:flex;flex-direction:column;gap:8px}
+.dev-diagram-viewer::backdrop{background:transparent}
+.dev-diagram-viewer-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border:1px solid var(--color-border);border-radius:10px;flex-shrink:0}
+.dev-diagram-viewer-toolbar strong{font-size:14px;margin-right:auto}
+.dev-diagram-viewer-toolbar button{font:inherit;font-size:12px;line-height:1.5;cursor:pointer;padding:5px 9px;border:1px solid var(--color-border);border-radius:6px;color:inherit;background:transparent}
+.dev-diagram-viewer-toolbar button:focus-visible{outline:2px solid var(--color-accent-blue);outline-offset:2px}
+.dev-diagram-viewer-toolbar button:hover{background:var(--color-bg-hover)}
+.dev-diagram-viewer-hint{font-size:12px;color:var(--color-text-muted)}
+.dev-diagram-viewer-toolbar output{font-size:12px;min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
+.dev-diagram-viewer-canvas{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden;touch-action:none;cursor:grab;border:1px solid var(--color-border);border-radius:10px}
+.dev-diagram-viewer-canvas:active{cursor:grabbing}
+.dev-diagram-viewer-image{position:absolute;left:50%;top:50%;transform-origin:center;user-select:none}
+@media(max-width:900px){.dev-diagram-viewer-hint{display:none}.dev-diagram-viewer-toolbar strong{flex-basis:100%}}

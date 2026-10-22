@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { root, openTestApp } from './electron-test-helper.mjs';
+import { root, openTestApp, waitForStartupHandoff } from './electron-test-helper.mjs';
 const dataDir = path.join(root, '.test-data', 'local-runtime-' + Date.now());
 const report = { date: new Date().toISOString(), checks: {}, errors: [] };
 let app, page;
@@ -24,6 +24,9 @@ try {
   assert.deepEqual((await page.evaluate(() => window.shineAI.shortcut.getKeybindings())).data, saved.data);
   report.checks.occupiedKeysFallBackAndReturnEffectiveBindings = true;
   await app.evaluate(({ globalShortcut }, keys) => keys.forEach(key => globalShortcut.unregister(key)), blocked);
+  // Measure environment-check responsiveness after the cinematic opening has
+  // released the renderer; startup animation timing is a separate test.
+  await waitForStartupHandoff(page);
   const started = Date.now();
   // Force a full environment check while repeatedly exercising a separate IPC.
   let complete = false;

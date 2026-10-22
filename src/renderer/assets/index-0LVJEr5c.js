@@ -1,3 +1,15 @@
+import { extractChatImagePaths, chatImageError } from "./dev-chat-images.mjs";
+import {observeCompletionViewport} from "./dev-task-notifications.mjs";
+import { createPetPersonaUI } from "./dev-pet-persona.mjs";
+import { describeButlerSession, describeButlerTeam } from "./dev-butler-overview.mjs";
+import { buildBackgroundResults, createBackgroundResultsUI } from "./dev-background-results.mjs";
+import { backgroundVisibleGroups } from "./dev-background-collapse.mjs";
+import { createBackgroundToolUI, backgroundState } from "./dev-background-tools.mjs";
+import { createSendPreviewUI } from "./dev-send-preview.mjs";
+import { createDiagramViewer } from "./dev-diagram-viewer.mjs";
+import { createInputFlowUI } from "./dev-running-input.mjs";
+import { mountStartupPanel } from "./dev-startup.js";
+import { activityCounts, operationInfo } from "./dev-execution-model.mjs";
 import { createEditorRuntime } from "./dev-editor-runtime.js";
 import { openChatFile } from "./dev-file-links.js";
 import { mountAppearancePanel, appearanceTerminalTheme, bindTerminalAppearance } from "./dev-appearance.js";
@@ -19228,7 +19240,7 @@ const interactivePanel$1 = {
 };
 const liveInsert$1 = {
   dismiss: "Dismiss notice",
-  notice: "Inserted into the current running input stream · the AI receives it this turn (not the next round)"
+  notice: "Queued · waiting for a subsequent model request"
 };
 const messages$1 = {
   jumpToLatest: "Jump to latest",
@@ -36759,7 +36771,7 @@ const memberWorkspace$1 = {
   clickToExpandLoad: "(click to load)",
   clickToExpandHistory_one: "Click to expand {{count}} history message",
   clickToExpandHistory_other: "Click to expand {{count}} history messages",
-  liveInserted: "Inserted into the running input stream · the AI will receive it this turn",
+  liveInserted: "Queued · waiting for a subsequent model request",
   dismissHint: "Dismiss",
   inputPlaceholder: "Send a message to {{name}}… (Shift+Enter for a new line)",
   promoteSendTitle: "Send with priority: move to the front of the queue",
@@ -43068,7 +43080,7 @@ const interactivePanel = {
 };
 const liveInsert = {
   dismiss: "关闭提示",
-  notice: "已插入当前运行输入流 · AI 会在当前回合接收（不是等待下一轮）"
+  notice: "消息已排队 · 等待后续模型请求"
 };
 const messages = {
   jumpToLatest: "跳转到最新内容",
@@ -59548,7 +59560,7 @@ const teamMemberCard = {
   waitingHuman: "等待人工",
   lastHeartbeat: "最后心跳",
   restartCount: "重启: {{count}}/{{max}}",
-  liveMessagesTooltip: "已插入当前运行输入流（点击展开）",
+  liveMessagesTooltip: "消息已排队（点击展开）",
   queuedMessagesTooltip: "点击展开排队消息",
   queuedMessagesTooltipCoalesced: "点击展开排队消息（已整理为 {{count}} 条）",
   pause: "暂停",
@@ -60426,7 +60438,7 @@ const memberWorkspace = {
   messageCount: "（{{count}} 条消息）",
   clickToExpandLoad: "（点击展开加载）",
   clickToExpandHistory: "点击展开 {{count}} 条历史消息",
-  liveInserted: "已插入当前运行输入流 · AI 会在当前回合接收",
+  liveInserted: "消息已排队 · 等待后续模型请求",
   dismissHint: "关闭提示",
   inputPlaceholder: "发送消息给 {{name}}…（Shift+Enter 换行）",
   promoteSendTitle: "插队发送：提到队首，优先插入这条消息",
@@ -61096,7 +61108,7 @@ const sessionProgress = {
     waitingAgent: "等待子 Agent：{{name}}",
     teamRunning: "团队正在协作",
     liveInputInserted: "{{count}} 条输入已插入当前运行流",
-    liveInputDetail: "AI 会在当前回合接收，不会作为聊天气泡提前显示。"
+    liveInputDetail: "等待后续模型请求，不会作为聊天气泡提前显示。"
   },
   completedSteps: {
     agentDone: "子 Agent 完成：{{name}}",
@@ -69882,8 +69894,8 @@ const sessionStoreApi = createStore$1((set2, get2) => ({
           if (s2.id !== sessionId) return s2;
           const nextConfig = {
             ...s2.config,
-            permissionMode: "full_auto",
-            autoAccept: true
+            permissionMode: result2.permissionMode || result2.data?.permissionMode || mode2,
+            autoAccept: (result2.permissionMode || result2.data?.permissionMode || mode2) === "full_auto"
           };
           return { ...s2, config: nextConfig };
         })
@@ -101235,7 +101247,7 @@ function ChatImage({ src = "", alt = "", ...props }) {
       setResult({ source: src, src: "", error: "" });
       void (async () => {
         try {
-          const image2 = await window.shineAI.fileManager.readFile(path2, sessionId ? { sessionId } : void 0, true);
+          const image2 = await window.development.chatFiles.readImage(path2, sessionId ? { sessionId } : void 0);
           if (image2.kind !== "image" || !image2.dataUrl) {
             throw new Error("error" in image2 ? image2.error : t2("chatImage.noData"));
           }
@@ -101251,7 +101263,7 @@ function ChatImage({ src = "", alt = "", ...props }) {
   }, [src, path2, sessionId]);
   const error2 = failedSource === src || path2 && result2.source === src && result2.error;
   if (error2) return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { role: "status", title: result2.error || src, className: "p-3 text-sm text-text-muted", children: [
-    t2("chatImage.loadFailed"),
+    chatImageError(result2.error, !instance.language?.startsWith("en")) + "：",
     alt || t2("chatImage.imageFallback")
   ] });
   const resolved = path2 ? result2.source === src ? result2.src : "" : src;
@@ -147515,7 +147527,9 @@ const ZOOM_STEP$1 = 0.25;
 function clampZoom$1(value) {
   return Math.min(ZOOM_MAX$1, Math.max(ZOOM_MIN$1, Math.round(value * 100) / 100));
 }
+const DiagramViewer = createDiagramViewer({React:reactExports,jsx:jsxRuntimeExports,createPortal:reactDomExports.createPortal,language:()=>instance.language});
 const MermaidBlock = ({ source: source2, className }) => {
+  const [expandedDiagram,setExpandedDiagram] = reactExports.useState(false);
   const { t: t2 } = useTranslation("commandPalette");
   const rawId = reactExports.useId();
   const renderBaseId = reactExports.useMemo(() => `mermaid-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`, [rawId]);
@@ -147636,6 +147650,7 @@ const MermaidBlock = ({ source: source2, className }) => {
       className: joinClassNames$2("mermaid-block overflow-hidden rounded-xl border border-border/70", className),
       "data-mode": view,
       children: [
+        expandedDiagram && svg2 && jsxRuntimeExports.jsx(DiagramViewer,{svg:svg2,onClose:()=>setExpandedDiagram(false),onCopy:handleCopy,onExport:handleExport,copied}),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mermaid-block__toolbar flex items-center justify-between gap-2 border-b border-border/60 px-2 py-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mermaid-block__views flex items-center gap-1", role: "group", "aria-label": t2("mermaid.viewSwitch"), children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -147674,6 +147689,7 @@ const MermaidBlock = ({ source: source2, className }) => {
             )
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mermaid-block__actions flex min-w-0 flex-wrap items-center justify-end gap-1", children: [
+            canInspect && jsxRuntimeExports.jsxs("button",{type:"button",onClick:()=>setExpandedDiagram(true),"data-testid":"diagram-expand",className:"inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-text-muted transition-colors hover:text-text-secondary",children:[jsxRuntimeExports.jsx(Maximize2,{className:"h-3.5 w-3.5"}),instance.language.startsWith("zh")?"放大查看":"Expand diagram"]}),
             canInspect && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1 text-xs text-text-muted", "aria-live": "polite", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
                 Math.round(zoom2 * 100),
@@ -149338,7 +149354,7 @@ function useConversation(sessionId) {
       const resumeResult = await store2.resumeSession(targetSessionId);
       if (!resumeResult.success) {
         console.error("[useConversation] Failed to resume before sending:", resumeResult.error);
-        return void 0;
+        throw Error(resumeResult.error || "会话恢复失败");
       }
       targetSessionId = resumeResult.sessionId || targetSessionId;
       store2.selectSession(targetSessionId);
@@ -149366,7 +149382,7 @@ function useConversation(sessionId) {
         return { streamingSessions: next2 };
       });
       console.error("[useConversation] Failed to send message:", err);
-      return void 0;
+      throw err;
     }
   }, []);
   const respondPermission = reactExports.useCallback(async (accept) => {
@@ -149829,12 +149845,12 @@ const useButlerStore = create$5((set2, get2) => ({
   },
   updatePersona: async (persona2) => {
     try {
-      await window.shineAI.butler.setPersona(persona2);
-      set2((state2) => ({
-        persona: { ...state2.persona, ...persona2 }
-      }));
+      const result = await window.shineAI.butler.setPersona(persona2);
+      if (!result?.success) throw Error(result?.error || "人格配置保存失败");
+      set2({persona:result.persona});
     } catch (err) {
       console.error("[ButlerStore] Failed to update persona:", err);
+      throw err;
     }
   },
   setMood: (mood2) => {
@@ -150056,6 +150072,7 @@ const useButlerStore = create$5((set2, get2) => ({
         set2({ quickActions: actions2 });
       }
     );
+    const unsubPersonaChanged = window.development.pet.onPersonaChanged(persona => set2({persona}));
     const unsubConfigChanged = window.shineAI.butler.onConfigChanged?.((patch2) => {
       set2((state2) => ({ config: { ...state2.config, ...patch2 } }));
     });
@@ -150086,6 +150103,7 @@ const useButlerStore = create$5((set2, get2) => ({
       unsubQuickActions?.();
       unsubMemoryStored?.();
       unsubConfigChanged?.();
+      unsubPersonaChanged?.();
     };
   }
 }));
@@ -153279,48 +153297,8 @@ function pushUniqueImageRef(result2, seen2, value) {
   seen2.add(path2);
   result2.push({ path: path2, name: getFileName$7(path2) });
 }
-function unwrapStandaloneCandidate(value) {
-  let candidate = (value || "").trim();
-  if (candidate.startsWith("`") && candidate.endsWith("`") && candidate.length > 1) {
-    candidate = candidate.slice(1, -1).trim();
-  }
-  return candidate.replace(/^[('"\u201C\u2018]+/, "").replace(/[)'"\u201D\u2019]+$/, "").trim();
-}
-function isStandaloneImagePath(candidate) {
-  if (!candidate || !IMAGE_EXT_RE.test(candidate)) return false;
-  return /^(?:https?:\/\/|file:\/\/\/?|blob:|data:image\/)/i.test(candidate) || /^[A-Za-z]:[\\/]/.test(candidate) || candidate.startsWith("/");
-}
-function normalizeStandaloneCandidate(line2) {
-  let candidate = (line2 || "").trim();
-  if (!candidate || candidate === "```") return "";
-  candidate = candidate.replace(/^>\s*/, "");
-  candidate = candidate.replace(/^[-*\u2022]\s+/, "");
-  candidate = candidate.replace(/^\d+\.\s+/, "");
-  const labelMatch = candidate.match(IMAGE_PATH_LABEL_RE);
-  if (labelMatch) {
-    candidate = labelMatch[1].trim();
-  } else {
-    const genericLabelMatch = candidate.match(/^([^:\uFF1A]{1,32})\s*[:\uFF1A]\s*(.+)$/);
-    if (genericLabelMatch) {
-      const labelledValue = unwrapStandaloneCandidate(genericLabelMatch[2] || "");
-      if (isStandaloneImagePath(labelledValue)) {
-        candidate = labelledValue;
-      }
-    }
-  }
-  return unwrapStandaloneCandidate(candidate);
-}
 function extractStandaloneImagePaths(raw, seen2) {
-  if (!raw) return [];
-  const result2 = [];
-  const dedupe = seen2 ?? /* @__PURE__ */ new Set();
-  const lines = raw.replace(/\r/g, "").split("\n");
-  for (const line2 of lines) {
-    const candidate = normalizeStandaloneCandidate(line2);
-    if (!isStandaloneImagePath(candidate)) continue;
-    pushUniqueImageRef(result2, dedupe, candidate);
-  }
-  return result2;
+  return extractChatImagePaths(raw, fromMarkdown, seen2).map(path => ({ path, name: getFileName$7(path) }));
 }
 function extractImageTags(raw) {
   if (!raw) return [];
@@ -153551,13 +153529,17 @@ const TOOL_STYLES = {
 };
 const DEFAULT_STYLE = { icon: "🧰", color: "text-text-secondary", label: "Tool" };
 const FILE_TOOLS = /* @__PURE__ */ new Set(["Read", "Write", "Edit", "Glob", "Grep", "read_file", "write_file", "edit_file", "glob", "grep"]);
-const ToolUseCard = ({ message: message2, operation, compact = false }) => {
+const BackgroundToolUI = createBackgroundToolUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
+const BackgroundResultsUI = createBackgroundResultsUI({jsx:jsxRuntimeExports,language:()=>instance.language});
+const ToolUseCard = ({ message: message2, operation, compact = false, backgroundReveal }) => {
   const { t: t2 } = useTranslation("conversationSessionToolbar");
   const [expanded, setExpanded] = reactExports.useState(() => Boolean(operation?.result?.isError || message2?.isError));
   const [ctxMenu, setCtxMenu] = reactExports.useState({ visible: false, x: 0, y: 0 });
   const openFileInTab = useFileManagerStore((s2) => s2.openFileInTab);
   const resolvedOperation = reactExports.useMemo(() => normalizeOperation(message2, operation), [message2, operation]);
   const primaryMessage = resolvedOperation.result || resolvedOperation.liveResult || resolvedOperation.toolUse || message2;
+  const backgroundCardRef = reactExports.useRef(null);
+  reactExports.useEffect(()=>{if(backgroundReveal?.toolUseId && backgroundReveal.toolUseId===(resolvedOperation.toolUseId || primaryMessage?.toolUseId)){setExpanded(true);const timer=setTimeout(()=>backgroundCardRef.current?.scrollIntoView({block:"center",behavior:"smooth"}),80);return()=>clearTimeout(timer);}},[backgroundReveal,resolvedOperation.toolUseId,primaryMessage?.toolUseId]);
   const effectiveToolName = resolvedOperation.result?.toolName || resolvedOperation.liveResult?.toolName || resolvedOperation.toolUse?.toolName || primaryMessage?.toolName || "";
   const effectiveToolInput = reactExports.useMemo(
     () => mergeToolInputs(
@@ -153569,23 +153551,25 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
     [primaryMessage?.toolInput, resolvedOperation.liveResult?.toolInput, resolvedOperation.result?.toolInput, resolvedOperation.toolUse?.toolInput]
   );
   const effectiveToolResult = resolvedOperation.result?.toolResult || resolvedOperation.liveResult?.toolResult || primaryMessage?.toolResult || "";
+  const backgroundJob = BackgroundToolUI.useJob(primaryMessage?.sessionId || resolvedOperation.toolUse?.sessionId, resolvedOperation.toolUseId || primaryMessage?.toolUseId, effectiveToolResult);
   const effectiveOutputs = resolvedOperation.liveResult?.toolOutputs || resolvedOperation.result?.toolOutputs || primaryMessage?.toolOutputs || [];
-  const isStreamingResult = Boolean(resolvedOperation.liveResult && !resolvedOperation.result);
-  const isPending = Boolean(resolvedOperation.toolUse && !resolvedOperation.liveResult && !resolvedOperation.result);
-  const isResult = Boolean(resolvedOperation.result) || primaryMessage?.role === "tool_result";
-  const isError = resolvedOperation.result?.isError ?? primaryMessage?.isError;
+  const isStreamingResult = !backgroundJob && Boolean(resolvedOperation.liveResult && !resolvedOperation.result);
+  const isPending = !backgroundJob && Boolean(resolvedOperation.toolUse && !resolvedOperation.liveResult && !resolvedOperation.result);
+  const isResult = Boolean(backgroundJob || resolvedOperation.result) || primaryMessage?.role === "tool_result";
+  const isError = backgroundJob ? backgroundState(backgroundJob).failed : (resolvedOperation.result?.isError ?? primaryMessage?.isError);
   const consultNames = isConsultExpertsToolName(effectiveToolName) ? readConsultExpertNames(effectiveToolInput) : [];
   const spawnName = isSpawnAgentToolName(effectiveToolName) ? readSpawnAgentName(effectiveToolInput) : "";
-  const style2 = isConsultExpertsToolName(effectiveToolName) ? { icon: "🎓", color: "text-accent-purple", label: formatConsultExpertsLabel({ running: isPending || isStreamingResult, names: consultNames }) } : isSpawnAgentToolName(effectiveToolName) ? { icon: "🤖", color: "text-accent-blue", label: formatSpawnAgentLabel({ running: isPending || isStreamingResult, name: spawnName }) } : TOOL_STYLES[effectiveToolName] || DEFAULT_STYLE;
-  const showHumanToolLabel = isConsultExpertsToolName(effectiveToolName) || isSpawnAgentToolName(effectiveToolName);
-  const filePath = FILE_TOOLS.has(effectiveToolName) ? getDisplayText(effectiveToolInput.file_path) || getDisplayText(effectiveToolInput.path) : void 0;
+  const humanInfo = operationInfo(resolvedOperation,instance.language.startsWith("zh"));
+  const style2 = humanInfo.kind!=="other" ? {icon:humanInfo.kind==="image"||humanInfo.kind==="screenshot"?"▧":"◇",color:"text-text-secondary",label:humanInfo.label} : isConsultExpertsToolName(effectiveToolName) ? { icon: "🎓", color: "text-accent-purple", label: formatConsultExpertsLabel({ running: isPending || isStreamingResult, names: consultNames }) } : isSpawnAgentToolName(effectiveToolName) ? { icon: "🤖", color: "text-accent-blue", label: formatSpawnAgentLabel({ running: isPending || isStreamingResult, name: spawnName }) } : TOOL_STYLES[effectiveToolName] || DEFAULT_STYLE;
+  const showHumanToolLabel = humanInfo.kind!=="other" || isConsultExpertsToolName(effectiveToolName) || isSpawnAgentToolName(effectiveToolName);
+  const filePath = operationInfo(resolvedOperation).evidence || (FILE_TOOLS.has(effectiveToolName) ? getDisplayText(effectiveToolInput.file_path) || getDisplayText(effectiveToolInput.path) : void 0);
   const isHtmlFile = Boolean(filePath && /\.(html?)$/i.test(filePath));
   const fileName = filePath ? filePath.split(/[/\\]/).pop() || filePath : "";
   const command2 = getCommandText(effectiveToolInput.command);
   const cwd2 = getDisplayText(effectiveToolInput.cwd);
   const shell2 = getDisplayText(effectiveToolInput.shell);
   const summary2 = reactExports.useMemo(
-    () => buildSummary({
+    () => backgroundJob ? command2 : buildSummary({
       toolName: effectiveToolName,
       toolInput: effectiveToolInput,
       toolResult: effectiveToolResult,
@@ -153594,7 +153578,7 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
       isPending,
       isError
     }),
-    [effectiveToolInput, effectiveToolName, effectiveToolResult, isError, isPending, isStreamingResult, primaryMessage?.content]
+    [backgroundJob, command2, effectiveToolInput, effectiveToolName, effectiveToolResult, isError, isPending, isStreamingResult, primaryMessage?.content]
   );
   const displayResult = reactExports.useMemo(
     () => truncateToolOutput(effectiveToolResult, isStreamingResult ? 16e3 : 12e3),
@@ -153604,7 +153588,7 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
   const latestStream = effectiveOutputs[effectiveOutputs.length - 1]?.stream;
   const hasCommandContext = Boolean(command2 || cwd2 || shell2);
   const hasLiveOutput = isStreamingResult && (streamSections.stdout || streamSections.stderr || displayResult);
-  const hasFinalResult = Boolean(!isStreamingResult && isResult && displayResult);
+  const hasFinalResult = Boolean(!backgroundJob && !isStreamingResult && isResult && displayResult);
   const inputPreview = reactExports.useMemo(() => formatToolInput(effectiveToolInput), [effectiveToolInput]);
   reactExports.useEffect(() => {
     if (isError) {
@@ -153688,7 +153672,7 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
   if (!primaryMessage) {
     return null;
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: compact ? "my-0.5 mx-1" : "my-1 mx-2", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { ref: backgroundCardRef, "data-tool-use-id": resolvedOperation.toolUseId || primaryMessage?.toolUseId, className: compact ? "my-0.5 mx-1" : "my-1 mx-2", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "button",
       {
@@ -153739,6 +153723,7 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
               ]
             }
           ),
+          backgroundJob && jsxRuntimeExports.jsx(BackgroundToolUI.Badge, {job:backgroundJob}),
           latestStream && isStreamingResult && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `text-tiny font-bold ${latestStream === "stderr" ? "text-accent-red" : "text-accent-purple"}`, children: latestStream.toUpperCase() }),
           isStreamingResult && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny font-bold text-accent-purple", children: "LIVE" }),
           isPending && !isStreamingResult && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny font-bold text-text-muted", children: "RUN" }),
@@ -153747,6 +153732,7 @@ const ToolUseCard = ({ message: message2, operation, compact = false }) => {
       }
     ),
     expanded && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-1 mx-1 rounded-lg bg-bg-secondary/60 p-2 text-xs font-mono border border-border-faint overflow-y-auto overflow-x-hidden max-h-[50vh] [@container(min-width:768px)]:max-h-[420px]", children: [
+      backgroundJob && jsxRuntimeExports.jsx(BackgroundToolUI.Details, {job:backgroundJob}),
       hasCommandContext && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-text-muted mb-1", children: t2("toolUse.commandContext") }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1 text-text-secondary whitespace-pre-wrap break-all", children: [
@@ -196034,6 +196020,8 @@ const REASONING_EFFORTS_OPENAI = [
   { value: "high", label: "High" }
 ];
 const PERMISSION_MODE_OPTIONS = [
+  { value:"manual",label:instance.language.startsWith("zh")?"逐次确认":"Manual",title:instance.language.startsWith("zh")?"工具执行前请求确认":"Ask before running tools"},
+  { value:"balanced",label:instance.language.startsWith("zh")?"平衡":"Balanced",title:instance.language.startsWith("zh")?"读取等安全工具自动运行，修改等操作请求确认":"Allow safe reads; ask before changes"},
   { value: "full_auto", label: instance.t("conversationSessionToolbar:permission.fullAuto"), title: instance.t("conversationSessionToolbar:permission.fullAutoTitle") }
 ];
 const isPermissionModeValue = (value) => value === "full_auto" || value === "balanced" || value === "manual";
@@ -196243,7 +196231,7 @@ const SessionToolbar = ({
   const [effortHint, setEffortHint] = reactExports.useState(null);
   const [permissionHint, setPermissionHint] = reactExports.useState(null);
   const [sessionModeHint, setSessionModeHint] = reactExports.useState(null);
-  const currentPermissionMode = reactExports.useMemo(() => "full_auto", []);
+  const currentPermissionMode = isPermissionModeValue(currentSession?.config?.permissionMode) ? currentSession.config.permissionMode : currentSession?.config?.autoAccept === false ? "manual" : "full_auto";
   const plan2 = useCurrentPlan();
   const currentSessionMode = reactExports.useMemo(
     () => resolveSessionModeFromConfig(currentSession?.config || {}),
@@ -202343,7 +202331,7 @@ ${blocks}` : blocks;
       await onSend(fullMessage, Object.keys(sendOptions).length > 0 ? sendOptions : void 0);
     } catch (err) {
       console.warn("[MessageInput] onSend failed, restoring draft:", err);
-      setText((cur) => cur || text2);
+      setText((cur) => cur || fullMessage);
     } finally {
       setSending(false);
       textareaRef.current?.focus();
@@ -204431,15 +204419,16 @@ function getCollapsedLiveSummary(operations, effectiveActive) {
   }
   return "";
 }
-const ToolOperationGroup = React$1.memo(function ToolOperationGroup2({ messages: messages2, isActive: isActive2, isSessionStreaming }) {
+const ToolOperationGroup = React$1.memo(function ToolOperationGroup2({ messages: messages2, isActive: isActive2, isSessionStreaming, backgroundReveal }) {
   const { t: t2 } = useTranslation("conversationSessionToolbar");
   const [expanded, setExpanded] = reactExports.useState(false);
   const showLiveToolPreview = useSettingsStore((s2) => s2.settings.showLiveToolPreview);
   const operations = reactExports.useMemo(() => aggregateOperations(messages2), [messages2]);
+  reactExports.useEffect(()=>{if(backgroundReveal?.toolUseId && operations.some(op=>op.toolUseId===backgroundReveal.toolUseId))setExpanded(true);},[backgroundReveal,operations]);
   const toolCounts = reactExports.useMemo(() => {
     const counts2 = {};
     for (const operation of operations) {
-      const name2 = getOperationName(operation);
+      const name2 = Object.keys(activityCounts([operation],instance.language.startsWith("zh")))[0];
       counts2[name2] = (counts2[name2] || 0) + 1;
     }
     return counts2;
@@ -204551,7 +204540,7 @@ const ToolOperationGroup = React$1.memo(function ToolOperationGroup2({ messages:
       }
     ),
     !expanded && collapsedLiveSummary && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pl-3.5 pb-0.5", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny text-text-muted/50 font-mono truncate block", children: collapsedLiveSummary }) }),
-    expanded && operations.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border-faint/50", children: operations.map((operation) => /* @__PURE__ */ jsxRuntimeExports.jsx(ToolUseCard$1, { operation, compact: true }, operation.id)) })
+    expanded && operations.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border-faint/50", children: operations.map((operation) => /* @__PURE__ */ jsxRuntimeExports.jsx(ToolUseCard$1, { operation, compact: true, backgroundReveal }, operation.id)) })
   ] });
 });
 ToolOperationGroup.displayName = "ToolOperationGroup";
@@ -251856,6 +251845,7 @@ function formatDuration$d(ms) {
   return `${seconds}s`;
 }
 const STATUS_META = {
+  cancelled: {get label(){return instance.language.startsWith("zh")?"已取消":"Cancelled";},dotClass:"bg-text-muted",textClass:"text-text-muted line-through",badgeClass:"border-border/60 text-text-muted"},
   in_progress: {
     label: instance.t("conversationMessageBubble:todoPanel.inProgress"),
     dotClass: "bg-accent-blue",
@@ -251886,7 +251876,7 @@ function getTodoText(item) {
   return text2 || instance.t("conversationMessageBubble:todoPanel.waitingNextTask");
 }
 function TodoRow({ item }) {
-  const meta2 = STATUS_META[item.status];
+  const meta2 = STATUS_META[item.status] || STATUS_META.pending;
   const isCompleted = item.status === "completed";
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "li",
@@ -251914,7 +251904,10 @@ function TodoGroup({
     /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "space-y-1", children: items.map((item, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(TodoRow, { item }, `${item.status}-${index2}-${item.content}`)) })
   ] });
 }
+const { InputFlowStatus, useInputFlow } = createInputFlowUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
 const SessionTodoPanel = ({ sessionId }) => {
+  const inputFlow = useInputFlow(sessionId);
+  const reviewPending = inputFlow && inputFlow.requiredRevision > inputFlow.reviewedRevision;
   const { t: t2 } = useTranslation("conversationMessageBubble");
   const todos = useSessionStore((state2) => state2.sessionTodos[sessionId]);
   const [expanded, setExpanded] = reactExports.useState(false);
@@ -251926,16 +251919,20 @@ const SessionTodoPanel = ({ sessionId }) => {
     const inProgress = [];
     const pending2 = [];
     const completed = [];
+    const cancelled = [];
     for (const item of todos.items) {
       if (item.status === "in_progress") {
         inProgress.push(item);
       } else if (item.status === "pending") {
         pending2.push(item);
+      } else if(item.status === "cancelled") {
+        cancelled.push(item);
       } else {
         completed.push(item);
       }
     }
     return {
+      cancelled,
       total: todos.items.length,
       inProgress,
       pending: pending2,
@@ -251944,14 +251941,14 @@ const SessionTodoPanel = ({ sessionId }) => {
   }, [todos]);
   if (!todos || !grouped || grouped.total === 0) return null;
   const unfinishedCount = grouped.inProgress.length + grouped.pending.length;
-  const completionPercent = Math.round(grouped.completed.length / grouped.total * 100);
-  const currentItem = grouped.inProgress[0] ?? grouped.pending[0] ?? grouped.completed[grouped.completed.length - 1];
+  const completionPercent = Math.round(grouped.completed.length / Math.max(1,grouped.total-grouped.cancelled.length) * 100);
+  const currentItem = grouped.inProgress[0] ?? grouped.pending[0] ?? grouped.completed[grouped.completed.length - 1] ?? grouped.cancelled.at(-1);
   const currentTaskText = getTodoText(currentItem);
-  const currentLabel = grouped.inProgress.length > 0 ? t2("todoPanel.currently") : grouped.pending.length > 0 ? t2("todoPanel.next") : t2("todoPanel.complete");
+  const currentLabel = grouped.cancelled.length === grouped.total ? (instance.language.startsWith("zh")?"已取消":"Cancelled") : grouped.inProgress.length > 0 ? t2("todoPanel.currently") : grouped.pending.length > 0 ? t2("todoPanel.next") : t2("todoPanel.complete");
   const extraRunningCount = Math.max(0, grouped.inProgress.length - 1);
-  const statusLabel2 = unfinishedCount === 0 ? t2("todoPanel.allCompleted") : t2("todoPanel.unfinished", { count: unfinishedCount });
+  const statusLabel2 = reviewPending ? (instance.language.startsWith("zh") ? "计划待核对" : "Plan needs review") : grouped.cancelled.length === grouped.total ? (instance.language.startsWith("zh") ? "任务已取消" : "Tasks cancelled") : unfinishedCount === 0 ? t2("todoPanel.allCompleted") : t2("todoPanel.unfinished", { count: unfinishedCount });
   const compactAriaLabel = t2("todoPanel.compactAria", { status: statusLabel2, label: currentLabel, task: currentTaskText, done: grouped.completed.length, total: grouped.total });
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-4 pb-0.5 pt-0.5", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border/70 bg-bg-secondary/85 shadow-sm backdrop-blur-sm", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-testid":"session-todo-panel", className: "px-4 pb-0.5 pt-0.5", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-lg border border-border/70 bg-bg-secondary/85 shadow-sm backdrop-blur-sm", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "button",
       {
@@ -251963,7 +251960,7 @@ const SessionTodoPanel = ({ sessionId }) => {
         title: compactAriaLabel,
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-muted transition-colors group-hover:text-text-secondary", children: expanded ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { className: "h-3.5 w-3.5" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronRight, { className: "h-3.5 w-3.5" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `inline-flex h-2 w-2 shrink-0 rounded-full ${unfinishedCount === 0 ? "bg-accent-green" : grouped.inProgress.length > 0 ? "bg-accent-blue" : "bg-accent-yellow"}` }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `inline-flex h-2 w-2 shrink-0 rounded-full ${grouped.cancelled.length === grouped.total ? "bg-text-muted" : unfinishedCount === 0 ? "bg-accent-green" : grouped.inProgress.length > 0 ? "bg-accent-blue" : "bg-accent-yellow"}` }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 items-center gap-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-xs font-medium leading-5 text-text-primary", children: statusLabel2 }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "min-w-0 flex-1 truncate text-xs leading-5 text-text-muted", children: [
@@ -251981,7 +251978,7 @@ const SessionTodoPanel = ({ sessionId }) => {
           /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 rounded-full bg-bg-primary/45 px-1.5 py-px text-tiny leading-4 text-text-muted", children: [
             grouped.completed.length,
             "/",
-            grouped.total,
+            grouped.total-grouped.cancelled.length,
             " · ",
             completionPercent,
             "%"
@@ -252008,7 +252005,8 @@ const SessionTodoPanel = ({ sessionId }) => {
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-border/65 px-2.5 py-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-h-52 space-y-2 overflow-y-auto pr-0.5", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(TodoGroup, { title: t2("todoPanel.groupTitle", { label: t2("todoPanel.inProgress"), count: grouped.inProgress.length }), items: grouped.inProgress }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(TodoGroup, { title: t2("todoPanel.groupTitle", { label: t2("todoPanel.pending"), count: grouped.pending.length }), items: grouped.pending }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(TodoGroup, { title: t2("todoPanel.groupTitle", { label: t2("todoPanel.completed"), count: grouped.completed.length }), items: grouped.completed, muted: true })
+        /* @__PURE__ */ jsxRuntimeExports.jsx(TodoGroup, { title: t2("todoPanel.groupTitle", { label: t2("todoPanel.completed"), count: grouped.completed.length }), items: grouped.completed, muted: true }),
+        jsxRuntimeExports.jsx(TodoGroup, {title:instance.language.startsWith("zh")?"已取消（不计入完成）":"Cancelled (not completed)",items:grouped.cancelled,muted:true})
       ] }) })
     ] })
   ] }) });
@@ -252022,7 +252020,7 @@ function resolvePromptOptimizerQueueHint(dispatch2) {
     return { state: "session_starting", text: "会话仍在启动中，消息已缓存" };
   }
   if (dispatch2.reason === "session_running_input_queue" || dispatch2.strategy === "enqueue_while_running") {
-    return { state: "enqueue_while_running", text: "已插入当前运行输入流，AI 会在当前回合接收" };
+    return { state: "enqueue_while_running", text: "消息已排队，等待后续模型请求" };
   }
   if (dispatch2.strategy === "interrupt_now") {
     if (dispatch2.reason === "deferred_for_compact") {
@@ -252934,6 +252932,7 @@ function buildTurnCollapseData(groups2, turnDurationMetaByMessageId, isStreaming
   for (let ti2 = 0; ti2 < turns.length; ti2++) {
     const turn = turns[ti2];
     const turnGroups = groups2.slice(turn.startIdx, turn.endIdx);
+    const backgroundVisible = backgroundVisibleGroups(turnGroups);
     if (turnGroups.length === 0) continue;
     let summaryLocalIdx = null;
     for (let i2 = turnGroups.length - 1; i2 >= 0; i2--) {
@@ -253037,7 +253036,7 @@ function buildTurnCollapseData(groups2, turnDurationMetaByMessageId, isStreaming
       continue;
     }
     for (let i2 = 0; i2 < turnGroups.length; i2++) {
-      if (i2 === summaryLocalIdx) continue;
+      if (i2 === summaryLocalIdx || backgroundVisible.has(turnGroups[i2].message?.id)) continue;
       hiddenGroupKeys.add(getGroupKey(turnGroups[i2]));
     }
   }
@@ -253086,9 +253085,16 @@ function formatRollbackFileChange(change) {
 }
 const interactivePanelTimeoutMinutes = Math.round(INTERACTIVE_TOOL_TIMEOUT_MS / 6e4);
 const InteractivePanelExpiredNotice = ({ label: label2 }) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center my-2 px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-2xl rounded-lg border border-border bg-bg-secondary/60 px-3 py-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-caption text-text-muted", children: label2 }) }) });
+const {useSendPreview,SendPreview}=createSendPreviewUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
 const ConversationView = ({ sessionId, isFocusMode = false, suppressInlinePrototypeCanvas = false, hideTopBars = false, jumpRequest, aboveInput }) => {
   const { t: t2 } = useTranslation("conversationConversationAgentStatusBar");
   const scrollRef = reactExports.useRef(null);
+  const completionViewportCleanup = reactExports.useRef(null);
+  const completionViewportRef = reactExports.useCallback(element => {
+    completionViewportCleanup.current?.();
+    scrollRef.current = element;
+    completionViewportCleanup.current = observeCompletionViewport(element,sessionId,acquireTopic);
+  },[sessionId]);
   const {
     messages: messages2,
     isStreaming,
@@ -253105,6 +253111,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     reloadConversation,
     loadOlderMessages
   } = useConversation(sessionId);
+  const sendPreview = useSendPreview(sessionId,messages2);
   const [resuming, setResuming] = reactExports.useState(false);
   const [startingFresh, setStartingFresh] = reactExports.useState(false);
   const [pendingInsert, setPendingInsert] = reactExports.useState(void 0);
@@ -253774,6 +253781,9 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     sessionScrollSnapshots.set(sessionId, { scrollTop: el2.scrollTop, nearBottom: true });
   }, [sessionId]);
   reactExports.useLayoutEffect(() => {
+    if (sendPreview.items.length) handleJumpToBottom();
+  }, [sendPreview.items.at(-1)?.id, handleJumpToBottom]);
+  reactExports.useLayoutEffect(() => {
     const anchor = olderLoadAnchorRef.current;
     const el2 = scrollRef.current;
     if (!anchor || !el2) return;
@@ -253879,6 +253889,10 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     });
   }, [messageGroups, messages2, deferredLiveEntries]);
   displayGroupsLengthRef.current = displayMessageGroups.length;
+  const backgroundJobs = BackgroundToolUI.useJobs(sessionId);
+  const backgroundResults = reactExports.useMemo(()=>buildBackgroundResults(displayMessageGroups,backgroundJobs,sessionId),[displayMessageGroups,backgroundJobs,sessionId]);
+  const [backgroundReveal,setBackgroundReveal] = reactExports.useState(null);
+  const revealBackgroundTool = reactExports.useCallback(({toolUseId,turnId})=>{setExpandedTurns(prev=>new Set([...prev,turnId]));setBackgroundReveal({toolUseId,request:Date.now()});},[]);
   const turnCollapseData = reactExports.useMemo(() => {
     if (!settings3.collapseProcessMessages) return null;
     return buildTurnCollapseData(
@@ -254099,6 +254113,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     }
   }, [sessionId, editUserMessageAndResend]);
   const handleRollbackToMessage = reactExports.useCallback(async (anchorMessageId) => {
+    if(useFileTabStore.getState().tabs.some(tab=>tab.isDirty)){showToast(instance.language.startsWith("zh")?"请先保存或关闭未保存的文件，再预览撤销":"Save or close unsaved files before reviewing an undo", "info");return;}
     if (isStreamingRef.current) {
       showToast(t2("rollback.streamingBlocked"), "info");
       return;
@@ -254242,7 +254257,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     void refreshQueue();
   }, [refreshQueue]);
   const { handleSlashCommand, handleSkillExecute } = useSlashSkillSend(sessionId);
-  const sendWithSmartScheduling = reactExports.useCallback(async (text2, options2) => {
+  const sendWithSmartScheduling = reactExports.useCallback((text2, options2) => sendPreview.run(text2,options2,async () => {
     const handled = await handleSlashCommand(text2);
     if (handled) return;
     const turnExperts = options2?.selectedExperts ?? [];
@@ -254354,7 +254369,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     if (!dispatch2) {
       removeTentativeDeferred();
       showToast(t2("send.failed"), "error");
-      return;
+      throw Error("消息未进入发送流程");
     }
     const queueHint = resolvePromptOptimizerQueueHint(dispatch2);
     if (!dispatch2.scheduled) {
@@ -254362,7 +254377,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     }
     if (queueHint.state === "hidden") {
       removeTentativeDeferred();
-      return;
+      return dispatch2;
     }
     if (queueHint.state === "enqueue_while_running") {
       const liveId = optimisticId;
@@ -254385,12 +254400,13 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
           { normalizedText, sentAt, anchorBeforeTs, expiresAt: sentAt + 12e4 }
         ]);
       }
-      return;
+      return dispatch2;
     }
     removeTentativeDeferred();
     setQueueHintText(queueHint.text);
     await refreshQueue();
-  }, [
+    return dispatch2;
+  }), [
     reloadConversation,
     refreshQueue,
     sendMessage,
@@ -255350,7 +255366,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "div",
               {
-                ref: scrollRef,
+                ref: completionViewportRef,
                 className: "h-full overflow-y-auto pl-[max(2rem,calc((100%_-_1040px)/2))] pr-[max(1rem,calc((100%_-_1040px)/2))] pt-3",
                 style: messageScrollStyle,
                 onScroll: handleMessageListScroll,
@@ -255528,7 +255544,8 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                           ) }, `collapse-${collapseHeader.turnId}`)
                         );
                       }
-                      if (turnCollapseData?.hiddenGroupKeys.has(gKey)) return elements;
+                      if (backgroundResults.hiddenNotices.has(group2.message?.id)) return elements;
+                      if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.byAnswer.has(group2.message?.id)) return elements;
                       if (group2.type === "tool_group") {
                         elements.push(
                           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: processRowIndent, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -255536,7 +255553,8 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                             {
                               messages: group2.messages,
                               isActive: group2.isActive && isStreaming,
-                              isSessionStreaming: isStreaming
+                              isSessionStreaming: isStreaming,
+                              backgroundReveal
                             }
                           ) }, gKey)
                         );
@@ -255639,6 +255657,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                             msg.id
                           )
                         );
+                        if(backgroundResults.byAnswer.has(msg.id)) elements.push(jsxRuntimeExports.jsx("div",{className:processRowIndent,children:jsxRuntimeExports.jsx(BackgroundResultsUI.Results,{rows:backgroundResults.byAnswer.get(msg.id),onReveal:revealBackgroundTool})},"background-results-"+msg.id));
                         return elements;
                       }
                       elements.push(
@@ -255717,6 +255736,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                       }
                     )
                   ] }) }),
+                  jsxRuntimeExports.jsx(SendPreview,{flow:sendPreview,sessionId}),
                   decisionPanelItems && /* @__PURE__ */ jsxRuntimeExports.jsx(
                     DecisionTablePanel,
                     {
@@ -255877,15 +255897,8 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserPolicyWaitCard, { sessionId }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),
-          !isSessionEnded && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              ref: composerRowRef,
-              className: `relative px-[max(0px,calc((100%_-_1040px_-_2rem)/2))] ${composerEntranceClassName}`,
-              style: composerEnterY != null ? { ["--composer-enter-y"]: `${composerEnterY}px` } : void 0,
-              children: [
-                canAbortCurrentTurn && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute -top-10 left-0 right-0 flex justify-center z-10 pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          /* @__PURE__ */ jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),
+                !isSessionEnded && canAbortCurrentTurn && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-testid":"stop-generating-row", className: "flex justify-center px-4 py-2 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   "button",
                   {
                     onClick: abortSession,
@@ -255897,6 +255910,15 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                     ]
                   }
                 ) }),
+          jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),
+          !isSessionEnded && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              ref: composerRowRef,
+              className: `relative px-[max(0px,calc((100%_-_1040px_-_2rem)/2))] ${composerEntranceClassName}`,
+              style: composerEnterY != null ? { ["--composer-enter-y"]: `${composerEnterY}px` } : void 0,
+              children: [
+
                 isTeamLeaderSession && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-4 pb-1", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 px-2 py-1.5 rounded-md border border-accent-indigo/30 bg-accent-indigo/10", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsxs(
                     "button",
@@ -369329,7 +369351,8 @@ const useButlerAssistantStore = create$5((set2, get2) => ({
 }));
 const STAT_CARDS = [
   { key: "running", label: instance.t("butlerButlerAssistant:sessionOverview.stat.running"), icon: Play, colorClass: "text-accent-blue" },
-  { key: "waiting", label: instance.t("butlerButlerAssistant:sessionOverview.stat.waiting"), icon: Clock, colorClass: "text-accent-yellow" },
+  { key: "waiting", label: instance.language.startsWith("zh") ? "待处理" : "Needs attention", icon: Clock, colorClass: "text-accent-yellow" },
+  { key: "idle", label: instance.language.startsWith("zh") ? "空闲/暂停" : "Idle / paused", icon: MessageSquare, colorClass: "text-text-muted" },
   { key: "completed", label: instance.t("butlerButlerAssistant:sessionOverview.stat.completed"), icon: CircleCheckBig, colorClass: "text-accent-green" },
   { key: "error", label: instance.t("butlerButlerAssistant:sessionOverview.stat.error"), icon: TriangleAlert, colorClass: "text-accent-red" }
 ];
@@ -369368,6 +369391,7 @@ function ButlerSessionOverview({
       all: items.length,
       running: 0,
       waiting: 0,
+      idle: 0,
       completed: 0,
       error: 0
     };
@@ -369415,7 +369439,7 @@ function ButlerSessionOverview({
     ] });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: compact ? "flex h-full min-h-0 flex-col gap-2" : "space-y-2", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-4 gap-1.5", children: STAT_CARDS.map(({ key: key2, label: label2, icon: Icon2, colorClass }) => {
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-5 gap-1.5", children: STAT_CARDS.map(({ key: key2, label: label2, icon: Icon2, colorClass }) => {
       const isActive2 = activeFilter === key2;
       return /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
@@ -369484,6 +369508,9 @@ function TaskOverviewRow({
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
+      "data-testid": "butler-task-row",
+      "data-status-kind": item.statusKind,
+      "data-task-id": item.id,
       role: "button",
       tabIndex: 0,
       onClick: onSelect,
@@ -369526,12 +369553,12 @@ function TaskOverviewRow({
             item.lastActivity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatRelativeTime$1(item.lastActivity) })
           ] }),
           item.subtitle && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-1 line-clamp-1 text-tiny text-text-muted", children: item.subtitle }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-2 flex items-center gap-2", children: [
+          Number.isFinite(item.progress) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { "data-testid": "butler-real-progress", className: "mt-2 flex items-center gap-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1.5 flex-1 overflow-hidden rounded-full bg-bg-elevated", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
                 className: `h-full rounded-full ${getProgressClass(item.statusKind)}`,
-                style: { width: `${Math.max(5, Math.min(100, item.progress))}%` }
+                style: { width: `${Math.max(0, Math.min(100, item.progress))}%` }
               }
             ) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-12 text-right text-tiny text-text-muted", children: item.progressLabel })
@@ -369548,24 +369575,22 @@ function normalizeSessionItem(session2, interventionCountBySession) {
   const status2 = session2.status || "running";
   const interventionCount = interventionCountBySession[id2] ?? 0;
   const currentDetection = session2.currentDetection;
-  const isWaiting = Boolean(
-    interventionCount > 0 || session2.isWaiting || session2.needsAttention || status2.includes("waiting") || currentDetection
-  );
+  const overview = describeButlerSession(session2, interventionCount, instance.language);
+  const isWaiting = overview.isWaiting;
   const startedAt = session2.startedAt;
   const runningTime = normalizeRunningTime(session2.runningTime, startedAt);
   const detail2 = stringifyMaybe(currentDetection?.metadata?.content) || stringifyMaybe(currentDetection?.metadata?.question) || currentDetection?.matchedText || "";
-  const statusKind = classifySessionStatus(status2, isWaiting);
-  const progress2 = inferProgress(status2, statusKind, runningTime);
+  const statusKind = overview.statusKind;
   return {
     id: id2,
     kind: "session",
     title: title2,
     subtitle: detail2 || session2.providerId || session2.provider || instance.t("butlerButlerAssistant:sessionOverview.sessionMonitored"),
     status: status2,
-    statusLabel: getSessionStatusLabel(status2, isWaiting),
+    statusLabel: overview.statusLabel,
     statusKind,
-    progress: progress2,
-    progressLabel: `${progress2}%`,
+    progress: overview.progress,
+    progressLabel: overview.progressLabel,
     isWaiting,
     waitingLabel: isWaiting ? session2.waitingType || getWaitingLabel(currentDetection?.reason) || instance.t("butlerButlerAssistant:sessionOverview.waitingUser") : void 0,
     interventionCount,
@@ -369576,8 +369601,8 @@ function normalizeSessionItem(session2, interventionCountBySession) {
 }
 function normalizeTeamItem(team2) {
   if (!team2?.id) return null;
-  const statusKind = classifyTeamStatus(team2.status);
-  const progress2 = inferTeamProgress(team2.status);
+  const overview = describeButlerTeam(team2, instance.language);
+  const statusKind = overview.statusKind;
   const startedAt = team2.startedAt;
   const runningTime = normalizeRunningTime(void 0, startedAt);
   return {
@@ -369586,10 +369611,10 @@ function normalizeTeamItem(team2) {
     title: team2.name || team2.teamId || team2.id,
     subtitle: team2.task || team2.workingDirectory || instance.t("butlerButlerAssistant:sessionOverview.teamRunning"),
     status: team2.status,
-    statusLabel: getTeamStatusLabel(team2.status),
+    statusLabel: overview.statusLabel,
     statusKind,
-    progress: progress2,
-    progressLabel: `${progress2}%`,
+    progress: overview.progress,
+    progressLabel: overview.progressLabel,
     isWaiting: team2.status === "waiting_user",
     waitingLabel: team2.status === "waiting_user" ? instance.t("butlerButlerAssistant:sessionOverview.waitingUser") : void 0,
     interventionCount: team2.status === "waiting_user" ? 1 : 0,
@@ -369598,73 +369623,6 @@ function normalizeTeamItem(team2) {
     task: team2.task,
     detail: team2.workingDirectory
   };
-}
-function classifySessionStatus(status2, isWaiting) {
-  if (isWaiting) return "waiting";
-  const value = status2.toLowerCase();
-  if (value === "completed" || value === "terminated") return "completed";
-  if (value === "error" || value === "failed") return "error";
-  return "running";
-}
-function classifyTeamStatus(status2) {
-  if (status2 === "waiting_user") return "waiting";
-  if (status2 === "completed") return "completed";
-  if (status2 === "failed") return "error";
-  return "running";
-}
-function inferProgress(status2, statusKind, runningTime) {
-  if (statusKind === "completed") return 100;
-  if (statusKind === "error") return 100;
-  if (statusKind === "waiting") return 70;
-  const value = status2.toLowerCase();
-  if (value === "starting") return 15;
-  if (value === "idle") return 45;
-  const minutes = Math.min(30, Math.floor(runningTime / 6e4));
-  return Math.min(85, 35 + minutes);
-}
-function inferTeamProgress(status2) {
-  switch (status2) {
-    case "starting":
-      return 15;
-    case "running":
-      return 55;
-    case "paused":
-      return 50;
-    case "waiting_user":
-      return 75;
-    case "completed":
-      return 100;
-    case "failed":
-      return 100;
-    default:
-      return 40;
-  }
-}
-function getSessionStatusLabel(status2, isWaiting) {
-  if (isWaiting) return instance.t("butlerButlerAssistant:sessionOverview.waitingIntervention");
-  const value = status2.toLowerCase();
-  const labels2 = {
-    starting: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.starting"),
-    running: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.running"),
-    idle: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.idle"),
-    interrupted: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.interrupted"),
-    completed: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.completed"),
-    terminated: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.terminated"),
-    error: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.error"),
-    failed: instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.failed")
-  };
-  return labels2[value] || status2 || instance.t("butlerButlerAssistant:sessionOverview.sessionStatus.unknown");
-}
-function getTeamStatusLabel(status2) {
-  const labels2 = {
-    starting: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.starting"),
-    running: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.running"),
-    paused: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.paused"),
-    completed: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.completed"),
-    failed: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.failed"),
-    waiting_user: instance.t("butlerButlerAssistant:sessionOverview.teamStatus.waitingUser")
-  };
-  return labels2[status2] || status2;
 }
 function getWaitingLabel(reason) {
   if (!reason) return void 0;
@@ -369679,6 +369637,7 @@ function getStatusDotClass(status2) {
     all: "bg-text-muted",
     running: "bg-accent-blue",
     waiting: "bg-accent-yellow",
+    idle: "bg-text-muted",
     completed: "bg-accent-green",
     error: "bg-accent-red"
   };
@@ -369689,6 +369648,7 @@ function getProgressClass(status2) {
     all: "bg-text-muted",
     running: "bg-accent-blue",
     waiting: "bg-accent-yellow",
+    idle: "bg-text-muted",
     completed: "bg-accent-green",
     error: "bg-accent-red"
   };
@@ -369712,7 +369672,7 @@ function stringifyMaybe(value) {
 }
 function sortDashboardItems(left, right) {
   if (left.interventionCount !== right.interventionCount) return right.interventionCount - left.interventionCount;
-  const rank = { waiting: 0, running: 1, error: 2, completed: 3, all: 4 };
+  const rank = { waiting: 0, running: 1, error: 2, idle: 3, completed: 4, all: 5 };
   if (rank[left.statusKind] !== rank[right.statusKind]) return rank[left.statusKind] - rank[right.statusKind];
   return right.runningTime - left.runningTime;
 }
@@ -371271,7 +371231,7 @@ function PetIdleFramePlayerInner({ frames, reduced = false, alt, onError, classN
 }
 const PetIdleFramePlayer = reactExports.memo(PetIdleFramePlayerInner);
 PetIdleFramePlayer.displayName = "PetIdleFramePlayer";
-function LayeredPetRendererInner({
+function BuiltinLayeredPetRendererInner({
   mood: mood2,
   avatarType,
   size = 48,
@@ -371436,7 +371396,8 @@ function LayeredPetRendererInner({
     }
   );
 }
-const LayeredPetRenderer = reactExports.memo(LayeredPetRendererInner);
+const PetPersonaUI = createPetPersonaUI({React:reactExports,jsx:jsxRuntimeExports,store:selector=>useButlerStore(selector),species:()=>PET_SPECIES,personalities:()=>PERSONALITY_OPTIONS,Builtin:BuiltinLayeredPetRendererInner,reducedMotion:usePrefersReducedMotion,language:()=>instance.language});
+const LayeredPetRenderer = reactExports.memo(PetPersonaUI.Avatar);
 LayeredPetRenderer.displayName = "LayeredPetRenderer";
 const SPECIES_TAUNTS = {
   cat_black: instance.t("butlerButlerAssistant:effects.taunts.catBlack", { returnObjects: true }),
@@ -376981,202 +376942,8 @@ function SpeciesPreview({
     }
   );
 }
-function PersonaConfigPanel({ onClose }) {
-  const { t: t2 } = useTranslation("butlerMemoryManagePanel");
-  const persona2 = useButlerStore((state2) => state2.persona);
-  const updatePersona = useButlerStore((state2) => state2.updatePersona);
-  const [name2, setName] = reactExports.useState(persona2?.name ?? t2("persona.defaultName"));
-  const [avatarType, setAvatarType] = reactExports.useState(persona2?.avatarType ?? "cat");
-  const [speciesKey, setSpeciesKey] = reactExports.useState(
-    () => resolveSelectedSpecies(persona2)
-  );
-  const [personality, setPersonality] = reactExports.useState(persona2?.personality ?? "casual");
-  const [isSaving, setIsSaving] = reactExports.useState(false);
-  const [hoverSpecies, setHoverSpecies] = reactExports.useState(null);
-  const savedSpecies = resolveSelectedSpecies(persona2);
-  const speciesDirty = speciesKey !== savedSpecies;
-  const selectedSpeciesName = PET_SPECIES.find((s2) => s2.species === speciesKey)?.displayNameZh ?? speciesKey;
-  reactExports.useEffect(() => {
-    if (persona2) {
-      setName(persona2.name);
-      setAvatarType(persona2.avatarType);
-      setSpeciesKey(resolveSelectedSpecies(persona2));
-      setPersonality(persona2.personality);
-    }
-  }, [persona2]);
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const patch2 = {
-        name: name2,
-        avatarType,
-        personality,
-        petSpecies: speciesKey
-      };
-      await updatePersona(patch2);
-      onClose();
-    } catch (err) {
-      console.error("[PersonaConfigPanel] Failed to save persona:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const lockedStages = PET_STAGE_OPTIONS.filter((s2) => !s2.unlocked && s2.unlockHint);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-medium text-text-primary", children: t2("persona.title") }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: onClose,
-          className: "text-xs text-text-muted hover:text-text-secondary transition-colors",
-          children: t2("common:actions.cancel")
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs text-text-secondary", children: t2("persona.name") }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "input",
-        {
-          type: "text",
-          value: name2,
-          onChange: (e3) => setName(e3.target.value),
-          placeholder: t2("persona.namePlaceholder"),
-          className: "w-full px-3 py-2 text-sm bg-bg-tertiary border border-border rounded-lg\r\n            text-text-primary placeholder:text-text-muted\r\n            focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/20\r\n            transition-colors",
-          maxLength: 20
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs text-text-secondary", children: t2("persona.avatarType") }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-testid": "pet-species-grid", className: "grid grid-cols-3 gap-2", children: PET_SPECIES.map((species) => {
-        const isSelected = speciesKey === species.species;
-        const animated = isSelected || hoverSpecies === species.species;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => {
-              setSpeciesKey(species.species);
-              setAvatarType(species.avatarType);
-            },
-            onMouseEnter: () => setHoverSpecies(species.species),
-            onMouseLeave: () => setHoverSpecies((h2) => h2 === species.species ? null : h2),
-            onFocus: () => setHoverSpecies(species.species),
-            onBlur: () => setHoverSpecies((h2) => h2 === species.species ? null : h2),
-            title: t2("persona.speciesTitle", { name: species.displayNameZh }),
-            "aria-label": species.displayNameZh,
-            "aria-pressed": isSelected,
-            className: `flex flex-col items-center gap-1 p-2 rounded-lg border transition-all
-                  ${isSelected ? "border-accent-blue bg-accent-blue/10" : "border-border bg-bg-tertiary hover:border-border/80"}`,
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                SpeciesPreview,
-                {
-                  species: species.species,
-                  emoji: species.fallbackEmoji,
-                  avatarType: species.avatarType,
-                  animated
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny text-text-muted", children: species.displayNameZh })
-            ]
-          },
-          species.species
-        );
-      }) }),
-      speciesDirty && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "p",
-        {
-          "data-testid": "pet-species-unsaved-hint",
-          role: "status",
-          "aria-live": "polite",
-          className: "flex items-center gap-1 text-tiny leading-tight text-accent-blue",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": true, children: "●" }),
-            t2("persona.speciesSelectedHint", { name: selectedSpeciesName })
-          ]
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs text-text-secondary", children: t2("persona.stage") }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-testid": "pet-stage-grid", className: "grid grid-cols-3 gap-2", children: PET_STAGE_OPTIONS.map((option) => {
-        const isSelected = option.unlocked && option.stage === "stage1";
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            disabled: !option.unlocked,
-            onClick: () => {
-            },
-            title: option.unlocked ? option.label : option.unlockHint ? t2("persona.stageLockedHint", { label: option.label, hint: option.unlockHint }) : t2("persona.stageLocked", { label: option.label }),
-            "aria-label": option.unlocked ? option.label : t2("persona.stageLocked", { label: option.label }),
-            className: `relative flex flex-col items-center gap-1 p-2 rounded-lg border transition-all
-                  ${!option.unlocked ? "border-border/60 bg-bg-tertiary/40 opacity-55 cursor-not-allowed" : isSelected ? "border-accent-blue bg-accent-blue/10" : "border-border bg-bg-tertiary hover:border-border/80"}`,
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-caption font-medium text-text-primary", children: option.label }),
-              !option.unlocked && /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 10, className: "absolute top-1 right-1 text-text-muted/70", "aria-hidden": true })
-            ]
-          },
-          option.stage
-        );
-      }) }),
-      lockedStages.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-0.5 pt-1", children: lockedStages.map((option) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "flex items-start gap-1 text-tiny leading-tight text-text-muted",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Lock, { size: 9, className: "mt-0.5 shrink-0", "aria-hidden": true }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-text-secondary", children: t2("persona.stageLabel", { label: option.label }) }),
-              option.unlockHint
-            ] })
-          ]
-        },
-        option.stage
-      )) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "text-xs text-text-secondary", children: t2("persona.personality") }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex gap-2", children: PERSONALITY_OPTIONS.map((option) => {
-        const isSelected = personality === option.type;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            onClick: () => setPersonality(option.type),
-            className: `flex-1 flex flex-col items-center gap-1 p-2 rounded-lg border transition-all
-                  ${isSelected ? "border-accent-blue bg-accent-blue/10" : "border-border bg-bg-tertiary hover:border-border/80"}`,
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg", children: option.emoji }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium text-text-primary", children: option.label }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny text-text-muted", children: option.description })
-            ]
-          },
-          option.type
-        );
-      }) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        onClick: handleSave,
-        disabled: isSaving,
-        className: `w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium
-          transition-all
-          ${isSaving ? "bg-bg-tertiary text-text-muted cursor-not-allowed" : "bg-accent-blue text-white hover:bg-accent-blue/90"}`,
-        children: isSaving ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "animate-spin", children: "⏳" }),
-          t2("persona.saving")
-        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 14 }),
-          t2("persona.save")
-        ] })
-      }
-    )
-  ] });
-}
+function PersonaConfigPanel({onClose}) { return jsxRuntimeExports.jsx(PetPersonaUI.Panel,{onClose}); }
+
 function SessionsSurface({
   boundSessionId,
   unboundFallback = "global",
@@ -405859,7 +405626,7 @@ const AppearanceSettings = () => {
 };
 function DevelopmentAppearanceSettings() {
   const ref = reactExports.useRef(null);
-  reactExports.useEffect(() => mountAppearancePanel(ref.current), []);
+  reactExports.useEffect(() => { const unmountAppearance=mountAppearancePanel(ref.current); const startupHost=document.createElement("div"); ref.current.after(startupHost); const unmountStartup=mountStartupPanel(startupHost); return()=>{unmountStartup();startupHost.remove();unmountAppearance();}; }, []);
   return jsxRuntimeExports.jsx("div", { ref });
 }
 function AppearanceSettingsSection() {

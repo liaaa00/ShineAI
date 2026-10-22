@@ -4086,9 +4086,22 @@ electron.contextBridge.exposeInMainWorld("api", {
 });
 
 electron.contextBridge.exposeInMainWorld("development", {
-  chatFiles: { prepare: (path, context) => electron.ipcRenderer.invoke("dev:chat-file:prepare", { path, context }) },
-  getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
+  chatFiles: { readImage: (path, context) => electron.ipcRenderer.invoke("file-manager:read-file", { path, context, includeImageData: true, cacheChatImage: true }), prepare: (path, context) => electron.ipcRenderer.invoke("dev:chat-file:prepare", { path, context }) },
+  inputFlow: {get: id => electron.ipcRenderer.invoke("dev:input-flow:get",id),retry:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:retry",id,inputId),onChanged:callback=>{const listener=(_event,value)=>callback(value);electron.ipcRenderer.on("dev:input-flow:changed",listener);return()=>electron.ipcRenderer.removeListener("dev:input-flow:changed",listener);}},
+  getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId), getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
   getServiceAccess: () => electron.ipcRenderer.invoke("dev:service-access"),
+  startup: {
+    launchContext: () => electron.ipcRenderer.invoke("dev:startup:launch-context"),
+    get: () => electron.ipcRenderer.invoke("dev:startup:get"),
+    save: value => electron.ipcRenderer.invoke("dev:startup:save",value),
+    importAudio: () => electron.ipcRenderer.invoke("dev:startup:import-audio"),
+    removeAudio: () => electron.ipcRenderer.invoke("dev:startup:remove-audio")
+  },
+  pet: {
+    importImage: () => electron.ipcRenderer.invoke("dev:pet:import"),
+    discardImage: id => electron.ipcRenderer.invoke("dev:pet:discard", id),
+    onPersonaChanged: callback => { const handler=(_event,persona)=>callback(persona); electron.ipcRenderer.on("dev:pet:persona-changed",handler); return()=>electron.ipcRenderer.removeListener("dev:pet:persona-changed",handler); }
+  },
   appearance: {
     get: () => electron.ipcRenderer.invoke("dev:appearance:get"),
     importMedia: () => electron.ipcRenderer.invoke("dev:appearance:import"),

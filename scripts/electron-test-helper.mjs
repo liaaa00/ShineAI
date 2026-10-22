@@ -3,7 +3,21 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { _electron } = createRequire(path.join(root, '.runtime/package.json'))('playwright-core');
+export async function waitForStartupHandoff(page,timeout=40000) {
+  // This bundled Playwright version treats an async waitForFunction predicate
+  // as truthy before its IPC promise resolves. Explicitly await each snapshot.
+  const deadline=Date.now()+timeout;
+  while(Date.now()<deadline){
+    if(!await page.evaluate(async()=>!!(await window.development?.startup?.launchContext?.())?.pending))return;
+    await page.waitForTimeout(100);
+  }
+  throw Error('Opening did not release the workbench');
+}
 export async function completeOnboarding(page) {
+  await waitForStartupHandoff(page);
+  // The optional opening deliberately makes the workbench inert until its
+  // cinematic handoff. Never force clicks through that modal surface.
+  await page.locator('#shine-startup').waitFor({ state: 'detached', timeout: 35000 });
   // Fresh profiles render the wizard asynchronously after the bridge is ready.
   const checkbox = page.locator('[data-onboarding-wizard-container] input[type=checkbox]').first();
   await checkbox.waitFor({ state: 'visible', timeout: 30000 });
@@ -11,8 +25,8 @@ export async function completeOnboarding(page) {
   await page.getByRole('button', { name: /进入开发工作台|登录并开始|继续设置/ }).first().click();
   await page.locator('[data-onboarding-wizard-container]').waitFor({ state: 'hidden', timeout: 30000 });
 }
-export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082 }, executablePath) {
-  const env = { ...process.env, SHINEAI_DEV_USER_DATA_DIR: dataDir, SHINEAI_LOCAL_AUTH_PORT: String(ports.auth), SHINEAI_MEETING_GATEWAY_PORT: String(ports.meeting) };
+export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082 }, executablePath, extraEnv = {}) {
+  const env = { ...process.env, ...extraEnv, SHINEAI_DEV_USER_DATA_DIR: dataDir, SHINEAI_LOCAL_AUTH_PORT: String(ports.auth), SHINEAI_MEETING_GATEWAY_PORT: String(ports.meeting) };
   // Explicit legacy-install tests must also isolate the former development
   // edition's profile and ports; never fall through to the user's live data.
   if (executablePath) Object.assign(env, { SPECTRAI_DEV_USER_DATA_DIR: dataDir, SPECTRAI_LOCAL_AUTH_PORT: String(ports.auth), SPECTRAI_MEETING_GATEWAY_PORT: String(ports.meeting) });

@@ -46,6 +46,16 @@ if (!reuseStage) {
   const appRoot = path.join(stage, 'resources/app');
   fs.mkdirSync(appRoot, { recursive: true });
   for (const dir of ['out', 'node_modules', 'resources']) fs.cpSync(path.join(root, dir), path.join(appRoot, dir), { recursive: true });
+  // Published dependencies can contain package-maintainer environment files.
+  // They are not application resources and must never enter an installer.
+  function removeEnvironmentFiles(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) removeEnvironmentFiles(file);
+      else if (/^(?:\.env(?:\..*)?|\.npmrc)$/i.test(entry.name)) fs.rmSync(file);
+    }
+  }
+  removeEnvironmentFiles(appRoot);
   fs.writeFileSync(path.join(appRoot, 'package.json'), JSON.stringify({
     name: metadata.name, productName: 'ShineAI', version: metadata.version,
     private: true, main: metadata.main, description: metadata.description,

@@ -10,7 +10,7 @@ export function patchFileLinksMain(source) {
   source = once(source,
     'function m8(a02,a03){const bNF=a7z,a04=new V6(a02);',
     'function m8(a02,a03){const bNF=a7z,a04=new V6(a02);require("./extensions/chat-file-preview.cjs").registerChatFilePreview(a04,r);');
-  const start = source.indexOf('"file-manager:read-file",async');
+  const start = Math.max(source.indexOf('"file-manager:read-file",async'), source.indexOf('"file-manager:read-file",require("./extensions/chat-image-cache.cjs").wrapReadFile('));
   const end = source.indexOf('"file-manager:watch-dir",', start);
   if (start < 0 || end < start) throw new Error('File read handler layout changed');
   let read = source.slice(start, end);
@@ -21,6 +21,7 @@ export function patchFileLinksMain(source) {
   return source.slice(0, start) + read + source.slice(end);
 }
 export function patchFileLinksPreload(source) {
+  if (source.includes('electron.ipcRenderer.invoke("dev:chat-file:prepare"')) return source;
   return once(source, '  getRuntimeInfo: () =>', '  chatFiles: { prepare: (path, context) => electron.ipcRenderer.invoke("dev:chat-file:prepare", { path, context }) },\n  getRuntimeInfo: () =>');
 }
 export function patchFileLinksRenderer(source) {
