@@ -32,4 +32,16 @@ const result = spawnSync(tool('7zip-bin').path7za, ['a', '-tzip', '-mx=3', '-bd'
 if (result.status !== 0) throw Error('Dependency archive failed');
 const sha256 = crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
 fs.writeFileSync(archive + '.sha256', sha256 + '  runtime-dependencies.zip\n');
-console.log(JSON.stringify({ archive, sha256, files: files.length, bytes: fs.statSync(archive).size }));
+for (const name of fs.readdirSync(output)) {
+  if (/^runtime-dependencies\.zip\.part-\d{3}$/.test(name)) fs.rmSync(path.join(output, name));
+}
+const descriptor = fs.openSync(archive, 'r');
+const chunk = Buffer.alloc(64 * 1024 * 1024);
+let parts = 0;
+try {
+  let size;
+  while ((size = fs.readSync(descriptor, chunk, 0, chunk.length, null))) {
+    fs.writeFileSync(archive + '.part-' + String(parts++).padStart(3, '0'), chunk.subarray(0, size));
+  }
+} finally { fs.closeSync(descriptor); }
+console.log(JSON.stringify({ archive, sha256, parts, files: files.length, bytes: fs.statSync(archive).size }));

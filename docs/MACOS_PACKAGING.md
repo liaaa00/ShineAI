@@ -7,8 +7,9 @@ Windows 安装器使用原有 NSIS 流程；Mac 安装器由 GitHub Actions 的�
 
 根目录依赖不能用普通 `npm install` 替换。当前项目仍依赖校验过的发布依赖快照。
 维护者在完整 Windows 工程运行 `node scripts/prepare-release-input.mjs`，生成不含 profile、
-环境文件或官方归档的 `artifacts/release-input/runtime-dependencies.zip`。将其及 SHA-256
-传入临时草稿 Release 和 `Package macOS` 工作流。工作流根据指定哈希校验快照，
+环境文件或官方归档的 `artifacts/release-input/runtime-dependencies.zip`，同时生成 64 MiB 的
+`.part-000` 等分片。将分片和 SHA-256 上传临时草稿 Release，再将标签及完整 ZIP 的
+SHA-256 传入 `Package macOS` 工作流。工作流合并分片，根据指定哈希校验快照，
 安装固定的对应架构 Codex CLI，下载校验过的 Electron 44.5.1，再打包。
 
 工作流是手动触发，不对 PR 运行，不执行其他分支提交的安装脚本。构建必须使用可信源码。
