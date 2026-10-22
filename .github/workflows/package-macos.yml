@@ -3,15 +3,38 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Draft release containing the dependency snapshot
+        description: Target draft release for the verified installers
         required: true
+        type: string
+      dependency_release_tag:
+        description: Persistent release containing the pinned dependency snapshot
+        required: false
+        default: build-inputs-v1
         type: string
       dependency_sha256:
         description: Verified SHA-256 of runtime-dependencies.zip
-        required: true
+        required: false
+        default: '73927d3d60ac5c86fe5a48723f46b0a351b01f1f8be61eff9ff5712678419869'
         type: string
       reuse_run_id:
         description: Optional previous run with identical application source (test-only fixes)
+        required: false
+        default: ''
+        type: string
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      dependency_sha256:
+        required: false
+        default: '73927d3d60ac5c86fe5a48723f46b0a351b01f1f8be61eff9ff5712678419869'
+        type: string
+      dependency_release_tag:
+        required: false
+        default: build-inputs-v1
+        type: string
+      reuse_run_id:
         required: false
         default: ''
         type: string
@@ -19,6 +42,7 @@ permissions:
   contents: write
 jobs:
   package:
+    if: github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -37,12 +61,11 @@ jobs:
       - name: Restore verified dependency snapshot
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: ${{ inputs.dependency_release_tag }}
           EXPECTED_SHA: ${{ inputs.dependency_sha256 }}
         run: |
           mkdir -p artifacts/input
-          gh release download "$RELEASE_TAG" --pattern 'runtime-dependencies.zip.part-*' --dir artifacts/input
-          cat artifacts/input/runtime-dependencies.zip.part-* > artifacts/input/runtime-dependencies.zip
+          gh release download "$RELEASE_TAG" --pattern 'runtime-dependencies.zip' --dir artifacts/input
           echo "$EXPECTED_SHA  artifacts/input/runtime-dependencies.zip" | shasum -a 256 -c -
           unzip -q artifacts/input/runtime-dependencies.zip
       - name: Restore platform CLIs and packaging tools
@@ -97,6 +120,7 @@ jobs:
             artifacts/installer-mac/*.json
             artifacts/installer-mac/*.png
           compression-level: 0
+          retention-days: 3
           if-no-files-found: warn
       - name: Upload tested installation images
         env:

@@ -119,7 +119,7 @@ test('real native history gates idle and queued completions, retaining failure a
   const fail=start();fail.child.emit('exit',3);
   assert.equal(handleCompletionInput(manager,'policy',input(fail.job),options).dispatched,false);
   handleCompletionInput(manager,'policy',input(fail.job),options);
-  assert.equal(notices.length,0,'matched errors appear in the answer supplement, without a standalone duplicate');
+  assert.equal(notices.length,0,'matched errors stay in tool cards, without a standalone duplicate');
   assert.equal(handleCompletionInput(manager,'policy',input(fail.job),{source:'user'}),undefined);
   const batch=`[SYSTEM][BACKGROUND_SHELL_COALESCED]\n1. jobId=${ok.job.id}; status=exited\n2. jobId=${fail.job.id}; status=exited`;
   assert.equal(handleCompletionInput(manager,'policy',batch,options).scheduled,false);assert.equal(notices.length,0);
@@ -128,17 +128,61 @@ test('real native history gates idle and queued completions, retaining failure a
   assert.equal(notices.length,1,'unmatched errors retain one visible fallback');
 });
 
-test('answer supplement groups exact failures once, preserves turn ownership, and hides only represented notices', () => {
+test('late failure hints group exact failures once, preserve turn ownership, and hide only represented notices', () => {
   const group=message=>({type:'message',message});
   const use=(id)=>({id,role:'tool_use',toolUseId:id,sessionId:'s'});
   const failure={id:'j1',toolUseId:'t1',sessionId:'s',status:'exited',exitCode:1,endedAt:10000,command:'same'};
-  const groups=[group({id:'u1',role:'user'}),{type:'tool_group',messages:[use('t1'),use('t2')]},group({id:'a1',role:'assistant',content:'Delivered'}),group({id:'legacy',role:'system',content:'后台任务已结束 (exited) · exit 1',timestamp:new Date(10100).toISOString()}),group({id:'unmatched',role:'system',content:'后台任务已结束 (exited) · exit 1',timestamp:new Date(50000).toISOString()}),group({id:'u2',role:'user'}),group({id:'a2',role:'assistant',content:'New answer'}),group({id:'exact',role:'system',metadata:{backgroundToolNotice:{jobId:'j1'}}})];
+  const groups=[group({id:'u1',role:'user'}),{type:'tool_group',messages:[use('t1'),use('t2')]},group({id:'a1',role:'assistant',content:'Delivered',timestamp:new Date(9000).toISOString()}),group({id:'legacy',role:'system',content:'后台任务已结束 (exited) · exit 1',timestamp:new Date(10100).toISOString()}),group({id:'unmatched',role:'system',content:'后台任务已结束 (exited) · exit 1',timestamp:new Date(50000).toISOString()}),group({id:'u2',role:'user'}),group({id:'a2',role:'assistant',content:'New answer'}),group({id:'exact',role:'system',metadata:{backgroundToolNotice:{jobId:'j1'}}})];
   const result=buildBackgroundResults(groups,[failure,failure,{...failure,id:'j2',toolUseId:'t2'},{...failure,id:'success',exitCode:0},{...failure,id:'other',sessionId:'other'},{...failure,id:'running',status:'running'},{...failure,id:'unknown',toolUseId:'unknown'}],'s');
   assert.deepEqual([...result.byAnswer.keys()],['a1']);
   assert.deepEqual(result.byAnswer.get('a1').map(row=>row.job.id),['j1','j2']);
   assert.equal(result.byAnswer.get('a1')[0].turnId,'u1');
+  assert.deepEqual([...result.preservedAnswers],['a1']);
   assert.deepEqual([...result.hiddenNotices].sort(),['exact','legacy']);
   assert.equal(buildBackgroundResults(groups.slice(0,2),[failure],'s').byAnswer.size,0);
+});
+
+test('failures already finished before the answer stay only in tool cards', () => {
+  const group=message=>({type:'message',message});
+  const groups=[group({id:'u',role:'user'}),group({id:'t',role:'tool_use',toolUseId:'t'}),group({id:'a',role:'assistant',content:'Delivered',timestamp:new Date(11000).toISOString()}),group({id:'notice',role:'system',metadata:{backgroundToolNotice:{jobId:'j'}}})];
+  const job={id:'j',sessionId:'s',toolUseId:'t',status:'exited',exitCode:3,endedAt:10000};
+  const result=buildBackgroundResults(groups,[job],'s');
+  assert.equal(result.byAnswer.size,0);
+  assert.equal(result.hiddenNotices.has('notice'),true);
+  assert.equal(result.preservedAnswers.has('a'),true);
+  assert.equal(backgroundState(job).failed,true,'history still retains the original failure');
+});
+
+test('a later answer after a retry removes the old hint without rewriting command history', () => {
+  const group=message=>({type:'message',message});
+  const groups=[group({id:'u',role:'user'}),group({id:'t1',role:'tool_use',toolUseId:'t1'}),group({id:'a1',role:'assistant',content:'Started',timestamp:new Date(9000).toISOString()})];
+  const failed={id:'failed',sessionId:'s',toolUseId:'t1',command:'same',status:'exited',exitCode:3,endedAt:10000};
+  assert.equal(buildBackgroundResults(groups,[failed],'s').byAnswer.has('a1'),true);
+  groups.push(group({id:'t2',role:'tool_use',toolUseId:'t2'}),group({id:'a2',role:'assistant',content:'Retry completed',timestamp:new Date(13000).toISOString()}));
+  const success={...failed,id:'retry',toolUseId:'t2',status:'exited',exitCode:0,endedAt:12000};
+  const result=buildBackgroundResults(groups,[failed,success],'s');
+  assert.equal(result.byAnswer.size,0);
+  assert.equal(result.preservedAnswers.has('a2'),true);
+  assert.equal(failed.exitCode,3);
+});
+
+test('stopped, interrupted, unknown and undated outcomes never become failure hints', () => {
+  const group=message=>({type:'message',message});
+  const base=[group({id:'u',role:'user'}),group({id:'t',role:'tool_use',toolUseId:'t'}),group({id:'a',role:'assistant',content:'Delivered',timestamp:new Date(9000).toISOString()})];
+  const job={id:'j',sessionId:'s',toolUseId:'t',status:'exited',exitCode:3,endedAt:10000};
+  for (const change of [{status:'killed'},{status:'interrupted'},{status:'ended'},{exitCode:undefined},{endedAt:undefined},{endedAt:9000},{exitCode:0}]) {
+    assert.equal(buildBackgroundResults(base,[{...job,...change}],'s').byAnswer.size,0,JSON.stringify(change));
+  }
+  assert.equal(buildBackgroundResults([...base.slice(0,2),group({...base[2].message,timestamp:undefined})],[job],'s').byAnswer.size,0);
+  assert.equal(buildBackgroundResults(base,[{...job,status:'error',exitCode:undefined}],'s').byAnswer.size,1);
+});
+
+test('exact associated notices remain hidden even before an answer; unassociated errors remain visible', () => {
+  const group=message=>({type:'message',message});
+  const groups=[group({id:'t',role:'tool_use',toolUseId:'t'}),group({id:'owned',role:'system',metadata:{backgroundToolNotice:{jobId:'j'}}}),group({id:'orphan',role:'system',metadata:{backgroundToolNotice:{jobId:'missing'}}})];
+  const result=buildBackgroundResults(groups,[{id:'j',sessionId:'s',toolUseId:'t',status:'error'}],'s');
+  assert.equal(result.byAnswer.size,0);
+  assert.deepEqual([...result.hiddenNotices],['owned']);
 });
 
 test('collapsed turns retain the formal answer and background failure alert, including older explicit notices', () => {

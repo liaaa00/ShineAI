@@ -63,8 +63,8 @@ function handleCompletionInput(manager, sessionId, text, options) {
   for (const notice of notices) {
     const key = sessionId + ':' + notice.id;
     if (!notice.content || seen.has(key)) continue;
-    // The answer's supplement derives from persisted exact tool evidence. Do
-    // not also append a second, standalone system-message notification.
+    // The tool card retains the evidence; the renderer may show a compact link
+    // for failures occurring after the answer. Never append a duplicate notice.
     const matched = jobs.find(job => job.id === notice.id);
     if (matched && relatedAnswer(messages, matched)) continue;
     seen.add(key);

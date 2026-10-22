@@ -44,6 +44,8 @@ export function patchBackgroundRenderer(s) {
   return patchBackgroundResultsRenderer(s.slice(0, start) + card + s.slice(end));
 }
 function patchBackgroundResultsRenderer(s) {
+  // Upgrade previously patched sources as well as a fresh baseline.
+  s = s.replace('if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.byAnswer.has(group2.message?.id)) return elements;', 'if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.preservedAnswers.has(group2.message?.id)) return elements;');
   const resultsImport = 'import { buildBackgroundResults, createBackgroundResultsUI } from "./dev-background-results.mjs";\n';
   if (!s.includes(resultsImport)) s = resultsImport + s;
   s = once(s, 'const ToolUseCard = ({ message: message2, operation, compact = false }) => {', 'const BackgroundResultsUI = createBackgroundResultsUI({jsx:jsxRuntimeExports,language:()=>instance.language});\nconst ToolUseCard = ({ message: message2, operation, compact = false, backgroundReveal }) => {');
@@ -53,7 +55,7 @@ function patchBackgroundResultsRenderer(s) {
   s = once(s, '  const operations = reactExports.useMemo(() => aggregateOperations(messages2), [messages2]);', '  const operations = reactExports.useMemo(() => aggregateOperations(messages2), [messages2]);\n  reactExports.useEffect(()=>{if(backgroundReveal?.toolUseId && operations.some(op=>op.toolUseId===backgroundReveal.toolUseId))setExpanded(true);},[backgroundReveal,operations]);');
   s = once(s, 'jsxRuntimeExports.jsx(ToolUseCard$1, { operation, compact: true }, operation.id)', 'jsxRuntimeExports.jsx(ToolUseCard$1, { operation, compact: true, backgroundReveal }, operation.id)');
   s = once(s, '  displayGroupsLengthRef.current = displayMessageGroups.length;', '  displayGroupsLengthRef.current = displayMessageGroups.length;\n  const backgroundJobs = BackgroundToolUI.useJobs(sessionId);\n  const backgroundResults = reactExports.useMemo(()=>buildBackgroundResults(displayMessageGroups,backgroundJobs,sessionId),[displayMessageGroups,backgroundJobs,sessionId]);\n  const [backgroundReveal,setBackgroundReveal] = reactExports.useState(null);\n  const revealBackgroundTool = reactExports.useCallback(({toolUseId,turnId})=>{setExpandedTurns(prev=>new Set([...prev,turnId]));setBackgroundReveal({toolUseId,request:Date.now()});},[]);');
-  s = once(s, 'if (turnCollapseData?.hiddenGroupKeys.has(gKey)) return elements;', 'if (backgroundResults.hiddenNotices.has(group2.message?.id)) return elements;\n                      if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.byAnswer.has(group2.message?.id)) return elements;');
+  s = once(s, 'if (turnCollapseData?.hiddenGroupKeys.has(gKey)) return elements;', 'if (backgroundResults.hiddenNotices.has(group2.message?.id)) return elements;\n                      if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.preservedAnswers.has(group2.message?.id)) return elements;');
   s = once(s, 'isSessionStreaming: isStreaming\n                            }', 'isSessionStreaming: isStreaming,\n                              backgroundReveal\n                            }');
   const assistantStart = s.indexOf('                      if (msg.role === "assistant") {\n                        const isTurnFinalAssistant');
   const assistantEnd = s.indexOf('                        return elements;', assistantStart);

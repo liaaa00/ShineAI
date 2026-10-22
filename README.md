@@ -30,6 +30,11 @@ npm start
 
 ## 验证与打包
 
+**直接在 GitHub 打包：**打开 **Actions → Build and release desktop installers → Run workflow**，
+选择 `main` 运行。工作流自动生成 Windows x64、Mac M 系列与 Intel 安装文件，检查通过后
+公开 Release，日常发版不需要本地重复打包。操作与固定依赖维护见
+[GitHub 发布流程](docs/GITHUB_RELEASES.md)。以下命令用于本地开发验证。
+
 ```powershell
 npm run check
 npm run smoke:brand

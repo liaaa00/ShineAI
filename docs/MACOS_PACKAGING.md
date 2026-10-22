@@ -7,6 +7,11 @@ Windows 安装器使用原有 NSIS 流程；Mac 安装器由 GitHub Actions 的�
 
 ## 构建方式
 
+日常发布使用 [统一 GitHub 发布流程](GITHUB_RELEASES.md)：在 Actions 运行
+`Build and release desktop installers`，Windows 和两种 Mac 会自动构建、检查和发布。
+下面的快照准备只在首次设置或依赖升级时需要；当前快照已持久保存在 `build-inputs-v1`
+草稿中，后续界面改动不需要重新上传。
+
 根目录依赖不能用普通 `npm install` 替换。当前项目仍依赖校验过的发布依赖快照。
 维护者在完整 Windows 工程运行 `node scripts/prepare-release-input.mjs`，生成不含 profile、
 环境文件或官方归档的 `artifacts/release-input/runtime-dependencies.zip`，同时生成 64 MiB 的
@@ -15,7 +20,7 @@ SHA-256 传入 `Package macOS` 工作流。工作流合并分片，根据指定�
 安装固定的对应架构 Codex CLI，下载校验过的 Electron 44.5.1，再打包。
 
 工作流是手动触发，不对 PR 运行，不执行其他分支提交的安装脚本。构建必须使用可信源码。
-依赖快照仅作此次构建输入，正式发布时可以移除；以后重建需要重新提供相同快照。
+依赖快照是可复用的构建输入；请保留 `build-inputs-v1` 草稿及其附件供后续工作流使用。
 
 `package-macos.mjs` 只在 Mac 上运行，恢复依赖解压后丢失的执行权限，保留相对符号链接，
 避免 CLI 快捷命令指向构建机器；发行前校验深度签名，保留沙箱和隔离，

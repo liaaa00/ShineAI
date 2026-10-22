@@ -1,0 +1,9 @@
+{
+  "dependencyRelease": "build-inputs-v1",
+  "dependencySha256": "73927d3d60ac5c86fe5a48723f46b0a351b01f1f8be61eff9ff5712678419869",
+  "windowsBootstrap": {
+    "release": "v1.0.6-local.20261022",
+    "asset": "ShineAI-1.0.6-windows-x64-setup.exe",
+    "sha256": "80aa066567676a9e0abae0462197f83406b368182f7766db04cf9f2c906509fe"
+  }
+}

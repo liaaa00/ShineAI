@@ -1,0 +1,97 @@
+name: Build and release desktop installers
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Optional new release tag; leave blank to generate one
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Create a new draft for this exact source revision
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node scripts/create-ci-release.mjs
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHINEAI_TEST_LANGUAGE: zh-CN
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore pinned packaging and test tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .runtime/packaging | Out-Null
+          Copy-Item scripts/packaging/package*.json .runtime/packaging/
+          npm ci --prefix .runtime/packaging --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/restore-ci-windows.mjs
+      - name: Automatic source and runtime checks
+        run: npm run check
+      - name: Background command UI regression
+        run: node scripts/background-tools-smoke.mjs
+      - name: Build Windows installer
+        run: node scripts/package-windows.mjs
+      - name: Install, launch and uninstall in the isolated runner
+        run: npm run test:installer
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ShineAI-windows-x64
+          path: |
+            artifacts/installer/*-setup.exe
+            artifacts/installer/*.sha256
+            artifacts/installer/*.json
+            artifacts/background-tools/*.json
+            artifacts/background-tools/*.png
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Attach verified Windows installer to the draft
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+        run: gh release upload "$env:RELEASE_TAG" artifacts/installer/*-setup.exe artifacts/installer/*.sha256
+  macos:
+    needs: prepare
+    uses: ./.github/workflows/package-macos.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
+  publish:
+    needs: [prepare, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify all platform assets and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+        run: node scripts/publish-ci-release.mjs

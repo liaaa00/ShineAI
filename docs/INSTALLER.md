@@ -23,6 +23,10 @@ node scripts/packaging/restore-nsis.mjs
 
 ## 生成与验证
 
+日常发版可直接在 GitHub Actions 运行 **Build and release desktop installers**，
+无需本地重复打包。三个平台自动检查通过后才公开 Release，操作见
+[GitHub 发布流程](GITHUB_RELEASES.md)。下面的命令用于本地开发或排查打包问题。
+
 ```powershell
 npm run package:win
 npm run test:installer-payload

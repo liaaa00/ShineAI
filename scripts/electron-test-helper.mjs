@@ -50,6 +50,19 @@ export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082
     }
     if (!page) throw new Error('Main renderer did not open');
     await page.waitForFunction(() => window.development?.getRuntimeInfo && (window.shineAI || window.spectrAI)?.session && document.querySelector('#root')?.children.length, undefined, { timeout: 120000 });
+    // CI runners may use an English OS; only isolated test profiles opt into
+    // the language expected by the existing Chinese UI regression selectors.
+    if (env.SHINEAI_TEST_LANGUAGE) {
+      if (!['zh-CN', 'en-US'].includes(env.SHINEAI_TEST_LANGUAGE)) throw Error('Unsupported test language');
+      const reload = await page.evaluate(language => {
+        if (localStorage.getItem('shineai-language') === language) return false;
+        localStorage.setItem('shineai-language', language); return true;
+      }, env.SHINEAI_TEST_LANGUAGE);
+      if (reload) {
+        await page.reload();
+        await page.waitForFunction(() => window.shineAI?.session && document.querySelector('#root')?.children.length, undefined, { timeout: 120000 });
+      }
+    }
     return { app, page };
   } catch (error) { await app.close(); throw error; }
 }

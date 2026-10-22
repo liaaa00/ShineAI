@@ -255545,7 +255545,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                         );
                       }
                       if (backgroundResults.hiddenNotices.has(group2.message?.id)) return elements;
-                      if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.byAnswer.has(group2.message?.id)) return elements;
+                      if (turnCollapseData?.hiddenGroupKeys.has(gKey) && !backgroundResults.preservedAnswers.has(group2.message?.id)) return elements;
                       if (group2.type === "tool_group") {
                         elements.push(
                           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: processRowIndent, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
