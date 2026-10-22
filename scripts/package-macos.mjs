@@ -32,7 +32,7 @@ const appRoot = path.join(contents, 'Resources/app');
 fs.rmSync(path.join(contents, 'Resources/default_app.asar'), { force: true });
 fs.mkdirSync(appRoot, { recursive: true });
 for (const dir of ['out', 'node_modules', 'resources']) {
-  fs.cpSync(path.join(root, dir), path.join(appRoot, dir), { recursive: true, filter(source) {
+  fs.cpSync(path.join(root, dir), path.join(appRoot, dir), { recursive: true, verbatimSymlinks: true, filter(source) {
     const parent = path.dirname(source);
     const packageRoot = path.basename(parent) === 'node_modules' || (path.basename(parent).startsWith('@') && path.basename(path.dirname(parent)) === 'node_modules');
     if (!packageRoot || !fs.existsSync(path.join(source, 'package.json'))) return true;

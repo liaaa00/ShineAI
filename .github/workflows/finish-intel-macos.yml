@@ -1,4 +1,4 @@
-name: Finish Intel macOS
+name: Finalize macOS installers
 on:
   workflow_dispatch:
     inputs:
@@ -12,7 +12,15 @@ permissions:
   contents: write
 jobs:
   finish:
-    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +31,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ inputs.source_run }}
+          TARGET_ARCH: ${{ matrix.arch }}
         run: |
-          gh run download "$SOURCE_RUN" --name ShineAI-macos-x64 --dir artifacts/installer-mac
+          gh run download "$SOURCE_RUN" --name "ShineAI-macos-$TARGET_ARCH" --dir artifacts/installer-mac
           npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
           npm run build
       - name: Create HFS+ installation image
@@ -34,7 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ShineAI-macos-x64-verified
+          name: ShineAI-macos-${{ matrix.arch }}-verified
           path: |
             artifacts/installer-mac/*.dmg
             artifacts/installer-mac/*.zip
