@@ -40,10 +40,14 @@ execFileSync('codesign', ['--force', '--deep', '--sign', '-', '--verbose=4', bun
 execFileSync('codesign', ['--verify', '--deep', '--strict', '--verbose=4', bundle], { stdio: 'inherit' });
 fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
 const refreshedZip=path.join(output, `ShineAI-1.0.6-macos-${arch}.repacked.zip`);
-execFileSync('ditto',['-c','-k','--keepParent',bundle,refreshedZip],{stdio:'inherit',timeout:300000});
+execFileSync('zip',['-q','-r','-y','-3','-X',refreshedZip,path.basename(bundle)],{cwd:path.dirname(bundle),stdio:'inherit',timeout:300000,killSignal:'SIGKILL'});
 fs.renameSync(refreshedZip,zip);
 const dmg = path.join(output, `ShineAI-1.0.6-macos-${arch}.dmg`);
 // HFS+ avoids the stalled APFS copy-helper on the hosted Intel runner.
-execFileSync('hdiutil', ['create', '-ov', '-srcfolder', stage, '-volname', 'ShineAI', '-fs', 'HFS+', '-format', 'UDZO', '-imagekey', 'zlib-level=3', dmg], { stdio: 'inherit', timeout: 300000 });
-for (const file of [zip, dmg]) fs.writeFileSync(file + '.sha256', crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') + '  ' + path.basename(file) + '\n');
-fs.writeFileSync(path.join(output, 'package-report.json'), JSON.stringify({ platform: 'darwin', arch, version: '1.0.6', bundle, executable: path.join(bundle, 'Contents/MacOS/ShineAI'), files: [zip, dmg], developerIdSigned: false, notarized: false, adHocSigned: true, commit: process.env.GITHUB_SHA, buildFingerprint: manifest.fingerprint, repairedLinks:repaired, source: 'Previously completed application ZIP; all application files checked against current build manifest; relocated links; HFS+ DMG' }, null, 2));
+const files=[zip];
+if(arch==='arm64'||process.argv.includes('--dmg')){
+  execFileSync('hdiutil', ['create', '-ov', '-srcfolder', stage, '-volname', 'ShineAI', '-fs', 'HFS+', '-format', 'UDZO', '-imagekey', 'zlib-level=3', dmg], { stdio: 'inherit', timeout: 300000,killSignal:'SIGKILL' });
+  files.push(dmg);
+}
+for (const file of files) fs.writeFileSync(file + '.sha256', crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') + '  ' + path.basename(file) + '\n');
+fs.writeFileSync(path.join(output, 'package-report.json'), JSON.stringify({ platform: 'darwin', arch, version: '1.0.6', bundle, executable: path.join(bundle, 'Contents/MacOS/ShineAI'), files, developerIdSigned: false, notarized: false, adHocSigned: true, commit: process.env.GITHUB_SHA, buildFingerprint: manifest.fingerprint, repairedLinks:repaired, source: 'Previously completed application ZIP; all application files checked against current build manifest; relocated links; signed application distribution' }, null, 2));

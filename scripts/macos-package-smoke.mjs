@@ -9,11 +9,17 @@ const checks = {};
 const installRoot = path.join(root, '.test-data/mac-installer-' + Date.now());
 const mount = path.join(installRoot, 'volume');
 fs.mkdirSync(mount, { recursive: true });
-const image = path.join(root, 'artifacts/installer-mac', path.basename(report.files.find(f => f.endsWith('.dmg'))));
-execFileSync('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, image], { timeout: 120000 });
-try {
-  execFileSync('ditto', [path.join(mount, 'ShineAI.app'), path.join(installRoot, 'ShineAI.app')]);
-} finally { execFileSync('hdiutil', ['detach', mount], { timeout: 120000 }); }
+const dmg=report.files.find(f=>f.endsWith('.dmg'));
+if(dmg){
+  const image = path.join(root, 'artifacts/installer-mac', path.basename(dmg));
+  execFileSync('hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, image], { timeout: 120000 });
+  try {
+    execFileSync('ditto', [path.join(mount, 'ShineAI.app'), path.join(installRoot, 'ShineAI.app')]);
+  } finally { execFileSync('hdiutil', ['detach', mount], { timeout: 120000 }); }
+}else{
+  const zip=path.join(root,'artifacts/installer-mac',path.basename(report.files.find(f=>f.endsWith('.zip'))));
+  execFileSync('ditto',['-x','-k',zip,installRoot],{timeout:180000});
+}
 const exe = path.join(installRoot, 'ShineAI.app/Contents/MacOS/ShineAI');
 const appRoot = path.resolve(path.dirname(exe), '../Resources/app');
 const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' };

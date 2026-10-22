@@ -1,4 +1,4 @@
-name: Finalize macOS installers
+name: Finalize Intel macOS ZIP
 on:
   workflow_dispatch:
     inputs:
@@ -16,8 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            arch: arm64
           - runner: macos-15-intel
             arch: x64
     runs-on: ${{ matrix.runner }}
@@ -36,7 +34,7 @@ jobs:
           gh run download "$SOURCE_RUN" --name "ShineAI-macos-$TARGET_ARCH" --dir artifacts/installer-mac
           npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
           npm run build
-      - name: Create HFS+ installation image
+      - name: Finalize signed application ZIP
         run: node scripts/finish-intel-macos.mjs
       - name: Exercise actual installation image
         run: node scripts/macos-package-smoke.mjs
@@ -55,4 +53,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber
+        run: |
+          shopt -s nullglob
+          gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber
