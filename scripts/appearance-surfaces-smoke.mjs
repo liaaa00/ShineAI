@@ -20,6 +20,16 @@ const backups=[];let app,page,config,media,viewport;
 async function settings(){await page.locator('button[aria-label="设置"]').click();await page.getByText('全部设置',{exact:true}).click();await page.getByRole('button',{name:'外观',exact:true}).click();await page.locator('.dev-appearance').waitFor();}
 async function save(){const result=await page.evaluate(config=>window.development.appearance.save(config),config);assert.equal(result.success,true,result.error);await page.waitForFunction(({id,on})=>document.documentElement.dataset.devBackground===(on?'on':'off')&&(!on||document.querySelector('#dev-background img:not([hidden])')?.src.endsWith(id)),{id:config.media,on:config.enabled});await page.waitForTimeout(450);}
 async function capture(name,locator){const file=path.join(artifacts,name+'.png');viewport=await page.evaluate(()=>({width:innerWidth,height:innerHeight,dpr:devicePixelRatio}));
+  if(locator)await locator.evaluate(async element=>{
+    let previous=null,stable=0;
+    for(let attempt=0;attempt<100;attempt++){
+      const r=element.getBoundingClientRect(),current=[r.x,r.y,r.width,r.height];
+      stable=previous&&current.every((value,i)=>Math.abs(value-previous[i])<.02)?stable+1:0;
+      if(stable>=6)return;
+      previous=current;await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    throw new Error('Screenshot target did not settle after canvas fit animation');
+  });
   // Capture the Electron compositor directly. CDP page screenshots can stall
   // on animated board layers even after fonts are ready. Keep the same visible
   // rectangle and pixel assertions without scrolling or changing UI styles.

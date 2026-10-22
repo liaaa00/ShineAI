@@ -10,7 +10,12 @@ import {root,openTestApp,completeOnboarding} from './electron-test-helper.mjs';
 const metadata=JSON.parse(fs.readFileSync(path.join(root,'artifacts/installer/package-report.json'),'utf8'));
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'artifacts/build-manifest.json'),'utf8'));
 const testRoot=path.join(root,'.test-data','installer-payload-'+Date.now());
-const install=path.join(testRoot,'application'),data=path.join(testRoot,'profile');
+const reused=process.argv.find(arg=>arg.startsWith('--payload-directory='))?.slice('--payload-directory='.length);
+const install=reused?path.resolve(reused):path.join(testRoot,'application'),data=path.join(testRoot,'profile');
+if(reused){
+  const relative=path.relative(fs.realpathSync(path.join(root,'.test-data')),fs.realpathSync(install));
+  assert.ok(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative),'Reused payload must be inside the isolated test directory');
+}
 const report={date:new Date().toISOString(),installer:metadata.installer,install,checks:{},errors:[],scope:'Embedded payload extraction and application behavior; installer registration/uninstallation not rerun'};
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 async function run(exe,args,options={}) {
@@ -34,8 +39,8 @@ try {
     try {await run('reg.exe',['export',key,backup,'/y']);protocolBackups.push({key,backup});}
     catch {protocolBackups.push({key,backup:null});}
   }
-  console.log('Extracting the actual installer payload into an isolated directory…');
-  await run(path.join(root,'.runtime/packaging/node_modules/7zip-bin/win/x64/7za.exe'),['x',metadata.installer,'-o'+install,'-y','-bd','-bb0']);
+  console.log(reused?'Revalidating the previously extracted installer payload…':'Extracting the actual installer payload into an isolated directory…');
+  if(!reused)await run(path.join(root,'.runtime/packaging/node_modules/7zip-bin/win/x64/7za.exe'),['x',metadata.installer,'-o'+install,'-y','-bd','-bb0']);
   let count=0;
   function countFiles(directory) {for(const entry of fs.readdirSync(directory,{withFileTypes:true})) {const target=path.join(directory,entry.name);if(entry.isDirectory())countFiles(target);else count++;}}
   countFiles(install);assert.equal(count,metadata.archiveFileEntries);
