@@ -18,8 +18,9 @@
 
 - Mac 使用持久保存的草稿 `build-inputs-v1` 中的 `runtime-dependencies-ci.zip`。它是可复用
   的构建依赖，不是安装包；不要删除这个草稿或附件。每次使用都会校验固定 SHA-256。
-- Windows 从 `scripts/packaging/release-inputs.json` 指定的旧版安装器恢复固定运行时、
-  应用依赖和未跟踪的大型资源。下载后先验证固定 SHA-256，只恢复允许的目录。
+- Windows 从 `scripts/packaging/release-inputs.json` 指定的旧版安装器恢复固定应用依赖
+  和未跟踪的大型资源，另从 Electron 官方下载原版运行时。两者均先验证固定
+  SHA-256；旧安装器只恢复允许的目录。
   当前源码、图标和其他跟踪资源始终取自本次 GitHub checkout。
 - 工具依赖使用独立锁文件；NSIS 与 rcedit 下载后也会校验固定 SHA-256。
 

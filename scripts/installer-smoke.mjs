@@ -94,7 +94,7 @@ try {
   });
   const { createConfig } = createRequire(path.join(appRoot, 'package.json'))('./out/main/runtime/config.cjs');
   assert.equal(state.packaged, true);
-  assert.equal(createConfig(state.root, {}, { isPackaged: state.packaged, appData: state.appData }).userData, path.join(state.appData, 'ShineAI'));
+  assert.equal(createConfig(state.root, {}, { isPackaged: state.packaged, appData: state.appData }).userData, path.join(state.appData, 'ShineAI', 'Desktop'));
   assert.equal(state.safeWindows, true);
   passed('packagedAbiSandboxAndAppDataIsolation');
   const skills = await page.evaluate(() => window.shineAI.registry.fetchSkills(true));
