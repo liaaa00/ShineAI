@@ -32,7 +32,9 @@ try {
  await page.locator('[data-preset="original"]').click();await saved();
  const original=await page.evaluate(()=>window.development.appearance.get());
  const mode=await page.evaluate(()=>document.documentElement.style.colorScheme==='dark'?'dark':'light');
- assert.deepEqual(original.config[mode],{strength:100,mask:0,transparency:100,blur:0,panelBlur:0});
+ const {text,...originalMedia}=original.config[mode];
+ assert.deepEqual(originalMedia,{strength:100,mask:0,transparency:100,blur:0,panelBlur:0});
+ assert.deepEqual(text,imported.config[mode].text,'Video preset must preserve manual text preferences');
  assert.equal(original.config.fit,'contain');assert.equal(original.config.motion,true);
  await page.waitForFunction(()=>{const v=document.querySelector('#dev-background video');return !v.paused&&v.currentTime>0&&v.videoWidth===2560&&v.videoHeight===1440;});
  await page.getByLabel('动态播放',{exact:true}).uncheck();await saved();
