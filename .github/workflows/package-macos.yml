@@ -48,8 +48,9 @@ jobs:
           cp scripts/packaging/package*.json .runtime/packaging/
           npm ci --prefix .runtime/packaging --no-audit --no-fund
           npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
-          npm install --prefix .runtime/mac-cli --no-audit --no-fund "@openai/codex@0.156.1-darwin-$TARGET_ARCH"
+          npm install --prefix .runtime/mac-cli --no-audit --no-fund "@openai/codex@0.156.1-darwin-$TARGET_ARCH" "@vscode/ripgrep-darwin-$TARGET_ARCH@1.18.0" "@github/copilot-darwin-$TARGET_ARCH@1.0.69" "sherpa-onnx-darwin-$TARGET_ARCH@1.13.7" "@lydell/node-pty-darwin-$TARGET_ARCH@1.1.0" "@wecom/cli-darwin-$TARGET_ARCH@0.1.9"
           mv .runtime/mac-cli/node_modules/@openai/codex "node_modules/@openai/codex-darwin-$TARGET_ARCH"
+          cp -R .runtime/mac-cli/node_modules/. node_modules/
           npm run build
       - name: Build DMG and ZIP
         run: node scripts/package-macos.mjs

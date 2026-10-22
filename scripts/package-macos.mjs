@@ -19,6 +19,15 @@ execFileSync('ditto', ['-x', '-k', archive, stage]);
 const bundle = path.join(stage, 'ShineAI.app');
 fs.renameSync(path.join(stage, 'Electron.app'), bundle);
 const contents = path.join(bundle, 'Contents');
+for (const notice of ['LICENSE', 'LICENSES.chromium.html']) {
+  if (fs.existsSync(path.join(stage, notice))) fs.copyFileSync(path.join(stage, notice), path.join(contents, 'Resources', notice));
+}
+const iconset = path.join(stage, 'ShineAI.iconset');
+fs.mkdirSync(iconset, { recursive: true });
+for (const size of [16, 32, 128, 256, 512]) {
+  for (const scale of [1, 2]) execFileSync('sips', ['-z', String(size * scale), String(size * scale), path.join(root, 'resources/icon.png'), '--out', path.join(iconset, `icon_${size}x${size}${scale === 2 ? '@2x' : ''}.png`)]);
+}
+execFileSync('iconutil', ['-c', 'icns', iconset, '-o', path.join(contents, 'Resources/shineai.icns')]);
 const appRoot = path.join(contents, 'Resources/app');
 fs.rmSync(path.join(contents, 'Resources/default_app.asar'), { force: true });
 fs.mkdirSync(appRoot, { recursive: true });
@@ -29,7 +38,7 @@ fs.writeFileSync(path.join(appRoot, 'package.json'), JSON.stringify({ name: meta
 const exe = path.join(contents, 'MacOS/ShineAI');
 fs.renameSync(path.join(contents, 'MacOS/Electron'), exe);
 const plist = path.join(contents, 'Info.plist');
-for (const [key, value] of Object.entries({ CFBundleExecutable: 'ShineAI', CFBundleName: 'ShineAI', CFBundleDisplayName: 'ShineAI', CFBundleIdentifier: 'com.local.shineai.dev.installed', CFBundleShortVersionString: metadata.version, CFBundleVersion: metadata.version, NSMicrophoneUsageDescription: 'Allow audio capture when you use voice features.', NSCameraUsageDescription: 'Allow camera access when you use video features.' })) {
+for (const [key, value] of Object.entries({ CFBundleExecutable: 'ShineAI', CFBundleName: 'ShineAI', CFBundleDisplayName: 'ShineAI', CFBundleIconFile: 'shineai.icns', CFBundleIdentifier: 'com.local.shineai.dev.installed', CFBundleShortVersionString: metadata.version, CFBundleVersion: metadata.version, NSMicrophoneUsageDescription: 'Allow audio capture when you use voice features.', NSCameraUsageDescription: 'Allow camera access when you use video features.' })) {
   execFileSync('plutil', ['-replace', key, '-string', value, plist]);
 }
 // ZIPs restored from Windows lose executable mode bits. Restore only executable
