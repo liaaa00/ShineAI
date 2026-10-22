@@ -1,0 +1,49 @@
+name: Finish Intel macOS
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      source_run:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  finish:
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore completed application archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+        run: |
+          gh run download "$SOURCE_RUN" --name ShineAI-macos-x64 --dir artifacts/installer-mac
+          npm ci --prefix .runtime --ignore-scripts --no-audit --no-fund
+          npm run build
+      - name: Create HFS+ installation image
+        run: node scripts/finish-intel-macos.mjs
+      - name: Exercise actual installation image
+        run: node scripts/macos-package-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ShineAI-macos-x64-verified
+          path: |
+            artifacts/installer-mac/*.dmg
+            artifacts/installer-mac/*.zip
+            artifacts/installer-mac/*.sha256
+            artifacts/installer-mac/*.json
+            artifacts/installer-mac/*.png
+          compression-level: 0
+      - name: Upload verified installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber
