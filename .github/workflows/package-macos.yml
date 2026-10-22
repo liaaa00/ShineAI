@@ -60,7 +60,13 @@ jobs:
         if: always()
         with:
           name: ShineAI-macos-${{ matrix.arch }}
-          path: artifacts/installer-mac/
+          path: |
+            artifacts/installer-mac/*.dmg
+            artifacts/installer-mac/*.zip
+            artifacts/installer-mac/*.sha256
+            artifacts/installer-mac/*.json
+            artifacts/installer-mac/*.png
+          compression-level: 0
           if-no-files-found: warn
       - name: Upload tested installation images
         env:
