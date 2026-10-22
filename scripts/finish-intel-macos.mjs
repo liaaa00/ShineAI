@@ -19,7 +19,17 @@ for (const file of manifest.files) {
   const restored = path.join(bundle, 'Contents/Resources/app/out', file.path);
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(restored)).digest('hex'), file.sha256, file.path);
 }
-execFileSync('codesign', ['--verify', '--deep', '--strict', bundle], { stdio: 'inherit' });
+console.log('Bundle entries:', fs.readdirSync(path.join(bundle, 'Contents')));
+function inspectLinks(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isSymbolicLink() && !fs.existsSync(file)) console.log('Broken link:', path.relative(bundle, file), fs.readlinkSync(file));
+    else if (entry.isDirectory()) inspectLinks(file);
+  }
+}
+inspectLinks(bundle);
+execFileSync('codesign', ['--force', '--deep', '--sign', '-', '--verbose=4', bundle], { stdio: 'inherit' });
+execFileSync('codesign', ['--verify', '--deep', '--strict', '--verbose=4', bundle], { stdio: 'inherit' });
 fs.symlinkSync('/Applications', path.join(stage, 'Applications'));
 const dmg = path.join(output, 'ShineAI-1.0.6-macos-x64.dmg');
 // HFS+ avoids the stalled APFS copy-helper on the hosted Intel runner.
