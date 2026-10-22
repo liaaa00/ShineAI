@@ -65,10 +65,13 @@ fixModes(appRoot);
 // Remove the downloaded bundle signature after modifying it, then apply an ad-hoc
 // signature required by Apple Silicon. This is not Developer ID/notarization.
 execFileSync('codesign', ['--force', '--deep', '--sign', '-', bundle], { stdio: 'inherit' });
+execFileSync('codesign', ['--verify', '--deep', '--strict', bundle], { stdio: 'inherit' });
 process.env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
 process.env.ELECTRON_BUILDER_COMPRESSION_LEVEL ??= '3';
 const output = path.join(root, 'artifacts/installer-mac');
-const files = await build({ projectDir: root, prepackaged: bundle, publish: 'never', targets: Platform.MAC.createTarget(['dmg', 'zip'], Arch[arch]), config: {
+// ZIP is a normal macOS application distribution. The hosted Intel runner's
+// disk-image copy helper stalls, so keep that architecture on the tested ZIP path.
+const files = await build({ projectDir: root, prepackaged: bundle, publish: 'never', targets: Platform.MAC.createTarget(arch==='x64'?['zip']:['dmg','zip'], Arch[arch]), config: {
   appId: 'com.local.shineai.dev.installed', productName: 'ShineAI', executableName: 'ShineAI', electronVersion: '44.5.1', npmRebuild: false, asar: false,
   directories: { output }, artifactName: 'ShineAI-${version}-macos-${arch}.${ext}',
   mac: { identity: null, category: 'public.app-category.developer-tools', icon: path.join(contents, 'Resources/shineai.icns') },

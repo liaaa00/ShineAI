@@ -1,6 +1,8 @@
 # macOS 安装包
 
-支持分别构建 Apple Silicon（arm64，M 系列）与 Intel（x64）DMG 和 ZIP。
+Apple Silicon（arm64，M 系列）提供 DMG 与 ZIP；Intel（x64）提供 ZIP。
+ZIP 解压后把 `ShineAI.app` 拖入“应用程序”即可安装。Intel 构建环境的磁盘镜像工具
+曾持续卡住，因此该架构采用标准的应用 ZIP 分发，并直接测试 ZIP 内的程序。
 Windows 安装器使用原有 NSIS 流程；Mac 安装器由 GitHub Actions 的原生 Mac runner 构建。
 
 ## 构建方式
@@ -15,7 +17,8 @@ SHA-256 传入 `Package macOS` 工作流。工作流合并分片，根据指定�
 工作流是手动触发，不对 PR 运行，不执行其他分支提交的安装脚本。构建必须使用可信源码。
 依赖快照仅作此次构建输入，正式发布时可以移除；以后重建需要重新提供相同快照。
 
-`package-macos.mjs` 只在 Mac 上运行，恢复依赖解压后丢失的执行权限，保留沙箱和隔离，
+`package-macos.mjs` 只在 Mac 上运行，恢复依赖解压后丢失的执行权限，保留相对符号链接，
+避免 CLI 快捷命令指向构建机器；发行前校验深度签名，保留沙箱和隔离，
 使用对应架构的数据库与 PTY 原生模块。`macos-package-smoke.mjs` 实测安装包对应的
 应用目录、SQLite 查询、真实终端、Claude/Codex CLI 启动、工作台加载和窗口沙箱。
 检查不消耗用户模型额度，不证明真实模型调用或全部 Mac 桌面权限场景都可用。
@@ -23,7 +26,7 @@ Windows 专用的 Git Bash/Python 不塞入 Mac 包；需要 Python/Git 的功�
 
 ## 安装
 
-选择自己芯片对应的 DMG，打开后将 ShineAI 拖到“应用程序”。也可解压 ZIP 后移动 `.app`。
+M 系列可打开对应 DMG 后将 ShineAI 拖到“应用程序”；Intel 解压 ZIP 后移动 `.app`。
 首次打开可能被 macOS 安全检查拦截：确认来源是自己的仓库后，在“系统设置 → 隐私与安全性”
 选择“仍要打开”。本项目未提供 Apple Developer ID 签名或公证；Apple Silicon 使用临时签名。
 屏幕录制、辅助功能、麦克风等权限按使用功能在系统设置中授予。

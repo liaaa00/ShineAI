@@ -102,4 +102,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber
+        run: |
+          shopt -s nullglob
+          gh release upload "$RELEASE_TAG" artifacts/installer-mac/*.dmg artifacts/installer-mac/*.zip artifacts/installer-mac/*.sha256 --clobber
