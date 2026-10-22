@@ -66,11 +66,12 @@ fixModes(appRoot);
 // signature required by Apple Silicon. This is not Developer ID/notarization.
 execFileSync('codesign', ['--force', '--deep', '--sign', '-', bundle], { stdio: 'inherit' });
 process.env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
+process.env.ELECTRON_BUILDER_COMPRESSION_LEVEL ??= '3';
 const output = path.join(root, 'artifacts/installer-mac');
 const files = await build({ projectDir: root, prepackaged: bundle, publish: 'never', targets: Platform.MAC.createTarget(['dmg', 'zip'], Arch[arch]), config: {
   appId: 'com.local.shineai.dev.installed', productName: 'ShineAI', executableName: 'ShineAI', electronVersion: '44.5.1', npmRebuild: false, asar: false,
   directories: { output }, artifactName: 'ShineAI-${version}-macos-${arch}.${ext}',
-  mac: { identity: null, category: 'public.app-category.developer-tools', icon: path.join(root, 'resources/icon.png') },
+  mac: { identity: null, category: 'public.app-category.developer-tools', icon: path.join(contents, 'Resources/shineai.icns') },
   dmg: { sign: false },
 } });
 for (const file of files.filter(f => /\.(dmg|zip)$/.test(f))) {
