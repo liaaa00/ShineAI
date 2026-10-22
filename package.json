@@ -12,7 +12,7 @@
     "test:mac-package": "node scripts/macos-package-smoke.mjs",
     "test:installer": "node scripts/installer-smoke.mjs",
     "test:installer-payload": "node scripts/installer-payload-smoke.mjs",
-    "test": "node --test test",
+    "test": "node scripts/run-unit-tests.mjs",
     "verify": "node scripts/verify.mjs",
     "check": "npm test && npm run build && npm run verify && npm run smoke && npm run smoke:cloud && npm run smoke:codex && npm run smoke:local && npm run smoke:editor",
     "smoke": "node scripts/smoke.mjs",
