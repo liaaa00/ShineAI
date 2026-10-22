@@ -1,14 +1,8 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import { completeOnboarding } from './electron-test-helper.mjs';
+import { root, openTestApp, completeOnboarding } from './electron-test-helper.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(path.join(root, '.runtime/package.json'));
-const { _electron } = require('playwright-core');
 const requests = [];
 const responseDelayMs = Number(process.env.CODEX_PROBE_SLOW_MS || 0);
 const server = http.createServer((request, response) => {
@@ -33,18 +27,11 @@ const server = http.createServer((request, response) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const env = { ...process.env, SHINEAI_DEV_USER_DATA_DIR: path.join(root, '.test-data', `codex-probe-${Date.now()}`), SHINEAI_LOCAL_AUTH_PORT: '19321', SHINEAI_MEETING_GATEWAY_PORT: '18091' };
-delete env.ELECTRON_RUN_AS_NODE;
+const dataDir = path.join(root, '.test-data', `codex-probe-${Date.now()}`);
 let application;
 try {
-  application = await _electron.launch({ executablePath: path.join(root, '.runtime/electron/electron.exe'), args: [root], cwd: root, env, timeout: 120000 });
-  let page;
-  const deadline = Date.now() + 120000;
-  while (Date.now() < deadline) {
-    page = application.windows().find((candidate) => !candidate.isClosed() && candidate.url().includes('/renderer/index.html'));
-    if (page) break;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
+  const { app, page } = await openTestApp(dataDir, { auth: 19321, meeting: 18091 });
+  application = app;
   assert.ok(page, 'development renderer opened');
   await page.waitForFunction(() => window.shineAI?.provider?.testApi, undefined, { timeout: 120000 });
   const started = Date.now();
