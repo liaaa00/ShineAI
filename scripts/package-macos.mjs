@@ -32,7 +32,14 @@ const appRoot = path.join(contents, 'Resources/app');
 fs.rmSync(path.join(contents, 'Resources/default_app.asar'), { force: true });
 fs.mkdirSync(appRoot, { recursive: true });
 for (const dir of ['out', 'node_modules', 'resources']) {
-  fs.cpSync(path.join(root, dir), path.join(appRoot, dir), { recursive: true });
+  fs.cpSync(path.join(root, dir), path.join(appRoot, dir), { recursive: true, filter(source) {
+    const parent = path.dirname(source);
+    const packageRoot = path.basename(parent) === 'node_modules' || (path.basename(parent).startsWith('@') && path.basename(path.dirname(parent)) === 'node_modules');
+    if (!packageRoot || !fs.existsSync(path.join(source, 'package.json'))) return true;
+    const pkg = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
+    const supports = (values, target) => !values || (!values.includes('!' + target) && (!values.some(v => !v.startsWith('!')) || values.includes(target) || values.includes('any')));
+    return supports(pkg.os, 'darwin') && supports(pkg.cpu, arch);
+  } });
 }
 fs.writeFileSync(path.join(appRoot, 'package.json'), JSON.stringify({ name: metadata.name, productName: 'ShineAI', version: metadata.version, main: metadata.main, private: true }));
 const exe = path.join(contents, 'MacOS/ShineAI');
