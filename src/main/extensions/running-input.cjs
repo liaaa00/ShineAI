@@ -5,8 +5,12 @@ const path = require('node:path');
 const { randomUUID, createHash } = require('node:crypto');
 const ledgers = new Map(), managers = new Map(), managerSet = new Set(), subscribers = new Map();
 const installed = Symbol('shine-input-manager');
+const historyInstalled = Symbol('shine-input-history');
 const marker = /<context-reminder data-shine-input="([a-f0-9-]{36})" revision="(\d+)">[\s\S]*?<\/context-reminder>\s*/g;
 const waiting = new Set(['dispatching','queued','submitted']);
+// A historical SDK handoff is not an owned queue. Keep deduplication scoped
+// to physical local queues and to a send that is still awaiting dispatch.
+const dispatchingInputs = new Set();
 let storageRoot;
 function validId(id) { if (typeof id !== 'string' || !id || id.length > 200) throw Error('Invalid session id'); }
 function directory() { return storageRoot || path.join(process.env.SHINEAI_USER_DATA_DIR, 'running-input'); }
@@ -18,13 +22,79 @@ function read(id) {
   try { value = JSON.parse(fs.readFileSync(filename(id), 'utf8')); } catch {}
   if (!value || value.sessionId !== id || !Array.isArray(value.inputs)) value = { sessionId:id, revision:0, reviewedRevision:0, requestRevision:0, version:0, inputs:[] };
   // Process-local adapter queues cannot be assumed to survive a restart.
-  for (const item of value.inputs) if (waiting.has(item.state)) item.state = 'interrupted';
+  let recovered=false;
+  for (const item of value.inputs) if (waiting.has(item.state)) { item.state = 'interrupted';recovered=true; }
   ledgers.set(id, value);
+  // Persist the recovery transition once; otherwise every app launch rediscovers
+  // the same submitted row as a fresh interruption.
+  if(recovered)save(value);
   return value;
 }
 function snapshot(id) {
   const state = read(id);
-  return structuredClone({ ...state, requiredRevision:requiredRevision(state), inputs:state.inputs.map(({envelope,...item}) => item) });
+  return structuredClone({ ...state, requiredRevision:requiredRevision(state), inputs:state.inputs.map(({envelope,...item}) => ({...item,...withdrawalStatus(id,item)})) });
+}
+function findManager(id) { return managers.get(id)||[...managerSet].find(m=>m.sessions.has(id)); }
+function inputText(value) {
+  if(typeof value==='string')return value;
+  if(value?.type==='user'&&value.message?.role==='user') {
+    const content=value.message.content;
+    if(typeof content==='string')return content;
+    if(Array.isArray(content)&&content.every(b=>b.type==='text'))return content.map(b=>b.text).join('');
+    return '';
+  }
+  return value?.source&&value.source!=='user'?'':value?.text||'';
+}
+function matchesInput(value,item) {
+  const text=inputText(value),found=tokens(text);
+  const original=strip(text).trim(),expected=item.text.trim();
+  // Never delete a recovery prompt, merged input, attachment or another message.
+  const sdkThinkingSuffix=value?.type==='user'&&original===(item.text+'\nultrathink').trim();
+  return found.length===1&&found[0].id===item.id&&found[0].revision===item.revision&&(original===expected||sdkThinkingSuffix);
+}
+function pendingLocations(id,item) {
+  const manager=findManager(id),session=manager?.sessions.get(id);
+  if(!session)return [];
+  const locations=[];
+  const add=(owner,key)=>{if(Array.isArray(owner?.[key])&&owner[key].some(v=>matchesInput(v,item)))locations.push({owner,key});};
+  for(const key of ['pendingMessages','scheduledMessages','runningInputQueue'])add(session,key);
+  const adapter=manager.resolveAdapter(session.provider),native=adapter?.sessions?.get(id);
+  if(typeof adapter?.takeRoundInput==='function')add(native,'pendingMessages');
+  // Codex delayed inputs and Claude's unconsumed async-iterator queue are local.
+  add(native,'delayedInputQueue');
+  add(adapter?.inputStreams?.get(id),'queue');
+  return locations;
+}
+function withdrawalStatus(id,item) {
+  if(item.state==='cancelled')return {canCancel:false,cancelReason:'cancelled'};
+  if(item.state==='sent'||item.sentAt)return {canCancel:false,cancelReason:'sent'};
+  if(pendingLocations(id,item).length)return {canCancel:true,cancelReason:'local_queue'};
+  return {canCancel:false,cancelReason:item.state==='submitted'?'handoff_unconfirmed':'not_in_queue'};
+}
+function withoutCancelled(id,messages) {
+  const state=read(id),cancelled=new Set([...(state.cancelledInputIds||[]),...state.inputs.filter(i=>i.state==='cancelled').map(i=>i.id)]);
+  return messages.filter(m=>m.role!=='user'||!tokens(m.content).some(t=>cancelled.has(t.id)));
+}
+function cancelInput(id,inputId) {
+  validId(id);
+  if(typeof inputId!=='string'||inputId.length>100)return {success:false,removed:false,error:'无效的消息编号'};
+  const state=read(id),item=state.inputs.find(i=>i.id===inputId);
+  if(!item)return {success:false,removed:false,error:'找不到这条消息'};
+  // Re-check at the point of removal; a previously rendered button is no proof.
+  if(item.state==='cancelled')return {success:true,removed:false,reason:'cancelled'};
+  const status=withdrawalStatus(id,item);
+  if(!status.canCancel)return {success:false,removed:false,reason:status.cancelReason,error:status.cancelReason==='sent'?'这条消息已经发出，无法撤回':'消息已离开可撤回的本地队列，无法保证撤回；这不代表模型已经收到。'};
+  const locations=pendingLocations(id,item);
+  // No await between checking and splicing: queue consumption cannot interleave.
+  for(const {owner,key}of locations)for(let i=owner[key].length-1;i>=0;i--)if(matchesInput(owner[key][i],item))owner[key].splice(i,1);
+  item.state='cancelled';item.cancelledAt=new Date().toISOString();delete item.error;
+  state.cancelledInputIds=[...new Set([...(state.cancelledInputIds||[]),item.id])];
+  const manager=findManager(id),session=manager.sessions.get(id),adapter=manager.resolveAdapter(session.provider),a=adapter.sessions?.get(id);
+  // SDKs may emit a local conversation row before consuming their input stream.
+  // Keep the audit record on disk, but exclude withdrawn input from replay.
+  for(const owner of [a,a?.adapter])if(Array.isArray(owner?.messages))owner.messages=withoutCancelled(id,owner.messages);
+  save(state);manager.emit('queue-update',id,manager.getScheduledMessages(id));
+  return {success:true,removed:true,text:item.text,inputId:item.id};
 }
 function save(state) {
   state.version++;
@@ -52,6 +122,9 @@ function create(id,text,initialState='queued') {
 function change(id,inputId,patch) {
   const state=read(id),item=state.inputs.find(i=>i.id===inputId);
   if (!item) return;
+  // A late adapter rejection must not turn a withdrawn input into a retry.
+  if(item.state==='cancelled'&&patch.state!=='cancelled')return;
+  if(patch.state==='cancelled')state.cancelledInputIds=[...new Set([...(state.cancelledInputIds||[]),item.id])];
   Object.assign(item,patch);save(state);
 }
 function tracked(id,text) { const state=read(id);return tokens(text).map(t=>state.inputs.find(i=>i.id===t.id)).filter(Boolean); }
@@ -106,6 +179,14 @@ function installManager(manager) {
   if(manager[installed])return;
   manager[installed]=true;
   managerSet.add(manager);
+  const conversation=manager.getConversation;
+  if(conversation)manager.getConversation=function(id,...args){return withoutCancelled(id,conversation.call(this,id,...args));};
+  const database=manager.database;
+  if(database&&!database[historyInstalled]&&typeof database.getConversationMessages==='function'){
+    database[historyInstalled]=true;
+    const get=database.getConversationMessages;
+    database.getConversationMessages=function(id,...args){return withoutCancelled(id,get.call(this,id,...args));};
+  }
   const resolve=manager.resolveAdapter,send=manager.sendMessage,queued=manager.getScheduledMessages;
   manager.resolveAdapter=function(...args){const adapter=resolve.apply(this,args);installAdapter(adapter);return adapter;};
   manager.getScheduledMessages=function(...args){return queued.apply(this,args).map(m=>({...m,text:strip(m.text),displayText:strip(m.displayText)}));};
@@ -115,17 +196,19 @@ function installManager(manager) {
     const session=this.sessions.get(id),source=options?.source||'user';
     const hasPlan=session?.latestTodos?.items?.some(i=>!['completed','cancelled'].includes(i.status));
     if(source!=='user'||!session||text.startsWith('/')||(!hasPlan&&!['running','starting'].includes(session.status)))return send.call(this,id,text,options);
-    const state=read(id),duplicate=state.inputs.find(i=>waiting.has(i.state)&&i.text===text);
+    const state=read(id),duplicate=state.inputs.find(i=>waiting.has(i.state)&&i.text===text&&(dispatchingInputs.has(i.id)||withdrawalStatus(id,i).canCancel));
     if(duplicate)return {dispatched:false,scheduled:true,strategy:'enqueue_while_running',reason:'session_running_input_queue',inputId:duplicate.id};
     // An unfinished plan requires review, but does not make an idle turn busy.
     // Preparing hooks/snapshots is a direct send until the scheduler says otherwise.
     const item=create(id,text,['running','starting'].includes(session.status)?'queued':'dispatching');
+    dispatchingInputs.add(item.id);
     try {
       const result=await send.call(this,id,envelope(item),options);
       if(result&&!result.dispatched&&!result.scheduled)change(id,item.id,{state:'failed',error:'消息未进入执行队列'});
       else if(result?.scheduled&&item.state==='dispatching')change(id,item.id,{state:'queued'});
       return {...result,inputId:item.id};
     } catch(error){change(id,item.id,{state:'failed',error:'消息投递失败，可重试'});throw error;}
+    finally{dispatchingInputs.delete(item.id);}
   };
   const complete=manager.maybeCompleteSessionTodosOnAgentCompletion;
   manager.maybeCompleteSessionTodosOnAgentCompletion=function(id){
@@ -136,6 +219,8 @@ function installManager(manager) {
   const remove=manager.removeScheduledMessage;
   if(remove)manager.removeScheduledMessage=function(id,queuedId){
     const session=this.sessions.get(id),text=this.findRealQueuedMessage(session,queuedId)?.message?.text;
+    const items=tracked(id,text);
+    if(items.length===1){const result=cancelInput(id,items[0].id);return {...result,messages:this.getScheduledMessages(id)};}
     const result=remove.call(this,id,queuedId);
     if(result.removed)for(const item of tracked(id,text))change(id,item.id,{state:'cancelled'});
     return sanitizeResult(result);
@@ -158,7 +243,12 @@ function installManager(manager) {
     if(session){const a=manager.resolveAdapter(session.provider).sessions?.get(id);for(const key of ['pendingMessages','delayedInputQueue'])if(Array.isArray(a?.[key]))a[key]=a[key].filter(keep);}
   }
   const clear=manager.clearScheduledMessages;
-  if(clear)manager.clearScheduledMessages=function(id){const state=read(id),result=clear.call(this,id);removePending(id,state);for(const item of state.inputs)if(waiting.has(item.state))item.state='cancelled';save(state);return result;};
+  if(clear)manager.clearScheduledMessages=function(id){
+    const state=read(id);
+    for(const item of state.inputs)if(withdrawalStatus(id,item).canCancel)cancelInput(id,item.id);
+    // Handed-off SDK input is not withdrawn by clearing the manager queue.
+    return clear.call(this,id);
+  };
   const abort=manager.abortSession;
   manager.abortSession=async function(id){
     const state=read(id);removePending(id,state);
@@ -169,6 +259,18 @@ function installManager(manager) {
   };
 }
 function register(ipcMain) {
+  ipcMain.handle('dev:input-flow:cancel',(_event,id,inputId)=>cancelInput(id,inputId));
+  ipcMain.handle('dev:input-flow:resolve',(_event,id,inputId,action)=>{
+    validId(id);
+    if(!['restore','dismiss'].includes(action))return {success:false,error:'无效的处理方式'};
+    const state=read(id),item=state.inputs.find(i=>i.id===inputId);
+    if(!item||!['submitted','interrupted'].includes(item.state))return {success:false,error:'这条消息已处理或不需要恢复'};
+    if(withdrawalStatus(id,item).canCancel)return {success:false,error:'这条消息仍在本地队列，请使用撤回，避免重复发送'};
+    const text=action==='restore'?item.text:undefined;
+    item.state=action==='restore'?'restored':'dismissed';item.resolvedAt=new Date().toISOString();
+    save(state);
+    return {success:true,...text!==undefined?{text,inputId:item.id}:{}};
+  });
   ipcMain.handle('dev:input-flow:get',(event,id)=>{
     validId(id);
     if(!subscribers.has(event.sender)){subscribers.set(event.sender,new Set());event.sender.once('destroyed',()=>subscribers.delete(event.sender));}
@@ -203,6 +305,6 @@ function register(ipcMain) {
     catch {change(id,item.id,{state:'failed',error:'重试失败，请检查会话或网络状态'});return {success:false,error:'重试失败，请检查会话或网络状态'};}
   });
 }
-module.exports={installManager,register,strip,tokens,needsReview,review,beginRequest,requestFailed,snapshot,
+module.exports={installManager,register,strip,tokens,needsReview,review,beginRequest,requestFailed,snapshot,cancelInput,
   // Isolated state tests use a temporary profile, never the live profile.
-  configureForTest(root){storageRoot=root;ledgers.clear();managers.clear();managerSet.clear();subscribers.clear();}};
+  configureForTest(root){storageRoot=root;ledgers.clear();managers.clear();managerSet.clear();subscribers.clear();dispatchingInputs.clear();}};

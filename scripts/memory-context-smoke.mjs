@@ -5,10 +5,14 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { root, openTestApp, completeOnboarding } from './electron-test-helper.mjs';
 const installed = process.argv.includes('--installed');
-const dir = path.join(root, 'artifacts/memory-context', installed ? 'installed' : 'development');
+const upstream108 = process.argv.includes('--upstream108');
+const dir = path.join(root, upstream108 ? 'artifacts/memory108' : 'artifacts/memory-context', installed ? 'installed' : 'development');
 const data = path.join(root, '.test-data', 'memory-context-' + Date.now()), workspace = path.join(data, 'workspace');
 fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(workspace, { recursive: true });
-const rule = '服务器与部署状态类问题，一律先读运维文档并实测 DNS 与线上接口，再作答；不凭记忆或会话摘要推断。';
+const rule = upstream108 ? '与用户协作时必须独立判断，核验依据后再给出结论，不盲目迎合。' : '服务器与部署状态类问题，一律先读运维文档并实测 DNS 与线上接口，再作答；不凭记忆或会话摘要推断。';
+const legacyClaim = '每次讨论文档时必须保留原始资料入口';
+const legacyBytes = '# Butler Memory Store\n\n## Entries (1)\n\n---\nid: legacy-memory108-fixture\ntype: user\nname: 旧版规则\ncreatedAt: '+new Date().toISOString()+'\nupdatedAt: '+new Date().toISOString()+'\ntags: ["user-explicit","high"]\nclaim: '+legacyClaim+'\ntrustTier: active\nconfidence: high\nstatus: active\ndecayTier: warm\ndecayScore: 0.7\n---\n'+legacyClaim+'\n';
+if (upstream108) { const memoryDir=path.join(data,'butler','memory');fs.mkdirSync(memoryDir,{recursive:true});fs.writeFileSync(path.join(memoryDir,'user_memory.md'),legacyBytes); }
 const question = '这里讨论卡片拖动和文字选择的使用方式。'.repeat(130) + '\n请选择：\n1. 保持现状：文字区拖=选字，卡片空白处拖=移动\n2. 按住 Alt 拖动';
 const report = { checks: {}, errors: [], scope: 'Actual Electron IPC/native API adapter, memory_save and background evaluation against a deterministic loopback fixture; disk restart and actual follow-up requests. Isolated profile, no real credentials or remote model calls. Does not establish real model instruction-following accuracy.' };
 const requests = [], backups = []; let app, page, sessionId;
@@ -24,7 +28,7 @@ const server = http.createServer((req, res) => {
       const body = JSON.parse(raw || '{}'), text = JSON.stringify(body), evaluation = text.includes('你是 ShineAI 记忆评估助手');
       requests.push({ evaluation, body });
       if (evaluation) {
-        answer(res, { content: text.includes('INVALID_EVAL') ? '{"worthRemembering":"true","confidence":"high"}' : JSON.stringify({ worthRemembering: true, confidence: 'high', suggestedType: 'feedback', suggestedName: '核验原则', reason: '明确长期规则', memoryText: rule }) });
+        answer(res, { content: text.includes('INVALID_EVAL') ? '{"worthRemembering":"true","confidence":"high"}' : JSON.stringify({ worthRemembering: true, confidence: 'high', suggestedType: 'feedback', suggestedName: '核验原则', reason: '明确长期规则', memoryText: rule, general: upstream108 }) });
         return;
       }
       const latest = [...(body.messages || [])].reverse().find(m => m.role === 'user'), latestText = typeof latest?.content === 'string' ? latest.content : JSON.stringify(latest?.content);
@@ -42,7 +46,7 @@ async function until(fn, label, timeout = 45000) {
   throw Error('Timed out: ' + label);
 }
 async function open() {
-  ({ app, page } = await openTestApp(data, { auth: 19861, meeting: 18661 }, installed ? 'E:/AI/ShineAI/ShineAI.exe' : undefined, { SHINEAI_DEV_BUTLER_DIR: path.join(data, 'butler') }));
+  ({ app, page } = await openTestApp(data, { auth: 19861, meeting: 18661 }, installed ? 'E:/AI/ShineAI/ShineAI.exe' : undefined, { SHINEAI_DEV_BUTLER_DIR: path.join(data, 'butler'), SHINEAI_TEST_LANGUAGE: 'zh-CN' }));
   page.on('pageerror', e => report.errors.push(e.message));
 }
 async function memories() {
@@ -65,6 +69,12 @@ try {
     try { execFileSync('reg.exe', ['export', key, file, '/y'], { stdio: 'ignore', windowsHide: true }); backups.push({ key, file }); } catch { backups.push({ key }); }
   }
   await open(); await completeOnboarding(page);
+  if (upstream108) {
+    const legacy=(await memories()).find(m=>m.id==='legacy-memory108-fixture');assert.equal(legacy?.claim,legacyClaim);
+    const record=JSON.parse(fs.readFileSync(path.join(data,'butler','.memory108-upgrade.json'),'utf8'));
+    assert.equal(fs.readFileSync(path.join(record.backup,'memory/user_memory.md'),'utf8'),legacyBytes);
+    report.checks.existingLegacyMemoryLoadsWithOriginalIdAndAutomaticByteExactBackup=true;
+  }
   await page.evaluate(() => window.shineAI.settings.update('backgroundAiAnalysisEnabled', false));
   const provider = await page.evaluate(url => window.shineAI.provider.create({ id: 'memory-fixture', name: '本地记忆验证', adapterType: 'openai-api', command: 'api', enabled: true, apiBaseUrl: url, apiKey: 'local-fixture-only', defaultModel: 'memory-fixture' }), 'http://127.0.0.1:' + server.address().port + '/v1');
   assert.ok(provider.provider?.id || provider.id || provider.data?.id, JSON.stringify(provider));
@@ -77,6 +87,7 @@ try {
   await until(async () => (await memories()).some(m => m.claim === rule || m.description === rule), 'saved memory appears after existing tier-index refresh');
   const saved = (await memories()).find(m => m.claim === rule || m.description === rule);
   assert.ok(saved, 'saved rule visible through real memory IPC'); assert.equal(saved.type, 'feedback'); assert.equal(saved.status, 'active');
+  if (upstream108) { assert.ok(saved.tags.includes('pinned')); report.checks.generalExplicitRuleAutomaticallyPinsThroughActualModelEvaluation=true; }
   report.checks.actualMemoryToolAndEvaluatorPersistPreviouslyRejectedRule = true;
   assert.equal(requests.filter(r => r.evaluation).length, 1, 'no second classification call');
   report.checks.oneExistingBackgroundEvaluationWithoutAdditionalClassifier = true;
@@ -90,6 +101,7 @@ try {
   await app.close(); app = null; await open();
   const restored = (await memories()).find(m => m.id === saved.id);
   assert.ok(restored); assert.equal(restored.claim || restored.description, rule); assert.equal(restored.status, 'active');
+  if (upstream108) { assert.ok(restored.tags.includes('pinned'));assert.ok((await memories()).some(m=>m.id==='legacy-memory108-fixture'&&m.claim===legacyClaim));report.checks.legacyAndPinnedMemoriesPersistTogetherAcrossRestart=true; }
   report.checks.savedRuleSurvivesDiskReloadAndMaintenance = true;
   const config = await page.evaluate(() => window.shineAI.butler.getConfig());
   assert.equal(config.autoRecallMemoriesEnabled, false);
@@ -100,6 +112,12 @@ try {
   await waitIdle(sessionId);
   const wire = requests.slice(before).find(r => !r.evaluation && JSON.stringify(r.body).includes('保持现状'));
   assert.ok(JSON.stringify(wire.body).includes('文字区拖=选字'), 'previous closing option remains in actual request');
+  if (upstream108) {
+    assert.ok(JSON.stringify(wire.body).includes(rule),'pinned rule is present in the real follow-up request');
+    const status=await page.evaluate(id=>window.shineAI.butler.getMemoryInjectionStatus(id),sessionId);
+    assert.equal(status.budgetChars,3500);assert.equal(status.maxItems,18);assert.ok(status.injectedItems.some(m=>m.id===saved.id));
+    report.checks.actualFollowupIncludesPinnedRuleAndReportsOfficial3500Char18ItemBudget=true;
+  }
   assert.equal(requests.slice(before).filter(r => r.evaluation).length, 0, 'ordinary send does not wait for memory evaluation');
   report.checks.actualRestartFollowupContainsQuestionAndShortReplyWithoutMemoryEvaluation = true;
   report.restoreFollowupWasScheduled = !!followup.dispatch?.scheduled;

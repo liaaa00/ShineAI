@@ -2625,7 +2625,27 @@ electron.contextBridge.exposeInMainWorld("shineAI", {
     getLiveFileDiff: (repoPath, worktreePath, filePath, baseCommit, baseBranch, worktreeBranchHint) => electron.ipcRenderer.invoke(IPC.WORKTREE_LIVE_FILE_DIFF, repoPath, worktreePath, filePath, baseCommit, baseBranch, worktreeBranchHint)
   },
   // ==================== Workspace API ====================
+  webLlm: {
+      list:()=>electron.ipcRenderer.invoke("web-llm:list"), saveSite:input=>electron.ipcRenderer.invoke("web-llm:save-site", input),deleteSite:siteId=>electron.ipcRenderer.invoke("web-llm:delete-site", {siteId}),setDefault:siteId=>electron.ipcRenderer.invoke("web-llm:set-default", {siteId}),test:siteId=>electron.ipcRenderer.invoke("web-llm:test", {siteId}),openLogin:siteId=>electron.ipcRenderer.invoke("web-llm:open-login", {siteId}),stopLoginWatch:siteId=>electron.ipcRenderer.invoke("web-llm:stop-login-watch", {siteId}),pick:(siteId,field)=>electron.ipcRenderer.invoke("web-llm:pick", {siteId,field}),setEnabled:input=>electron.ipcRenderer.invoke("web-llm:set-enabled", input),setSensitiveAllowlist:paths=>electron.ipcRenderer.invoke("web-llm:set-sensitive-allowlist", {paths}),refreshPresets:()=>electron.ipcRenderer.invoke("web-llm:refresh-presets"),onProgress:callback=>{const handler=(_event,data)=>callback(data);electron.ipcRenderer.on('web-llm:progress',handler);return()=>electron.ipcRenderer.removeListener('web-llm:progress',handler);}
+    },
+    dailyBoard: {
+      getDay:date=>electron.ipcRenderer.invoke("dailyBoard:get-day", date),generate:date=>electron.ipcRenderer.invoke("dailyBoard:generate", {date}),listRunDates:(from,to)=>electron.ipcRenderer.invoke("dailyBoard:list-run-dates", from,to),getSettings:()=>electron.ipcRenderer.invoke("dailyBoard:get-settings"),setSettings:settings=>electron.ipcRenderer.invoke("dailyBoard:set-settings", settings),getScheduleStatus:()=>electron.ipcRenderer.invoke("dailyBoard:get-schedule-status"),getChannelAvailability:()=>electron.ipcRenderer.invoke("dailyBoard:get-channel-availability"),export:input=>electron.ipcRenderer.invoke("dailyBoard:export", input),model:input=>electron.ipcRenderer.invoke("dailyBoard:model", input),
+      editItem:input=>electron.ipcRenderer.invoke("dailyBoard:edit-item", input),
+      moveLane:input=>electron.ipcRenderer.invoke("dailyBoard:move-lane", input),
+      merge:input=>electron.ipcRenderer.invoke("dailyBoard:merge", input),
+      split:input=>electron.ipcRenderer.invoke("dailyBoard:split", input),
+      addEntry:input=>electron.ipcRenderer.invoke("dailyBoard:add-entry", input),
+      updateEntry:input=>electron.ipcRenderer.invoke("dailyBoard:update-entry", input),
+      deleteEntry:input=>electron.ipcRenderer.invoke("dailyBoard:delete-entry", input),
+      resolveAiConflict:input=>electron.ipcRenderer.invoke("dailyBoard:resolve-ai-conflict", input),
+      cancelRefine:input=>electron.ipcRenderer.invoke("dailyBoard:cancel-refine", input),
+      cleanupRuns:input=>electron.ipcRenderer.invoke("dailyBoard:cleanup-runs", input),
+      onUpdated:callback=>{const handler=(_event,data)=>callback(data);electron.ipcRenderer.on('dailyBoard:updated',handler);return()=>electron.ipcRenderer.removeListener('dailyBoard:updated',handler);},
+      onProgress:callback=>{const handler=(_event,data)=>callback(data);electron.ipcRenderer.on('dailyBoard:progress',handler);return()=>electron.ipcRenderer.removeListener('dailyBoard:progress',handler);},
+      onScheduledReady:callback=>{const handler=(_event,data)=>callback(data);electron.ipcRenderer.on('dailyBoard:scheduled-ready',handler);return()=>electron.ipcRenderer.removeListener('dailyBoard:scheduled-ready',handler);}
+    },
   workspace: {
+    reorder: ids => electron.ipcRenderer.invoke("workspace:reorder", ids),
     list: () => electron.ipcRenderer.invoke(IPC.WORKSPACE_LIST),
     get: (id) => electron.ipcRenderer.invoke(IPC.WORKSPACE_GET, id),
     create: (data) => electron.ipcRenderer.invoke(IPC.WORKSPACE_CREATE, data),
@@ -3983,6 +4003,8 @@ electron.contextBridge.exposeInMainWorld("shineAI", {
   },
   // ==================== 内置浏览器 API（契约见 docs/plans/builtin-browser-plan.md §3.2） ====================
   browser: {
+    importCookies: options => electron.ipcRenderer.invoke("browser:cookies:import", options),
+    pageContext: tabId => electron.ipcRenderer.invoke("browser:page-context", tabId),
     createTab: (url) => electron.ipcRenderer.invoke(IPC.BROWSER_CREATE_TAB, { url }),
     closeTab: (tabId) => electron.ipcRenderer.invoke(IPC.BROWSER_CLOSE_TAB, { tabId }),
     activateTab: (tabId) => electron.ipcRenderer.invoke(IPC.BROWSER_ACTIVATE_TAB, { tabId }),
@@ -4087,7 +4109,7 @@ electron.contextBridge.exposeInMainWorld("api", {
 
 electron.contextBridge.exposeInMainWorld("development", {
   chatFiles: { readImage: (path, context) => electron.ipcRenderer.invoke("file-manager:read-file", { path, context, includeImageData: true, cacheChatImage: true }), prepare: (path, context) => electron.ipcRenderer.invoke("dev:chat-file:prepare", { path, context }) },
-  inputFlow: {get: id => electron.ipcRenderer.invoke("dev:input-flow:get",id),retry:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:retry",id,inputId),onChanged:callback=>{const listener=(_event,value)=>callback(value);electron.ipcRenderer.on("dev:input-flow:changed",listener);return()=>electron.ipcRenderer.removeListener("dev:input-flow:changed",listener);}},
+  inputFlow: {cancel:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:cancel",id,inputId),resolve:(id,inputId,action)=>electron.ipcRenderer.invoke("dev:input-flow:resolve",id,inputId,action),get: id => electron.ipcRenderer.invoke("dev:input-flow:get",id),retry:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:retry",id,inputId),onChanged:callback=>{const listener=(_event,value)=>callback(value);electron.ipcRenderer.on("dev:input-flow:changed",listener);return()=>electron.ipcRenderer.removeListener("dev:input-flow:changed",listener);}},
   getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId), getRuntimeInfo: () => electron.ipcRenderer.invoke("dev:runtime-info"),
   getServiceAccess: () => electron.ipcRenderer.invoke("dev:service-access"),
   startup: {

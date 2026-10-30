@@ -1,3 +1,7 @@
+import { createTaskProgressUI, displayRuntimeActivity } from "./dev-task-progress.mjs";
+import { createChatImagePresentation } from "./dev-chat-image-layout.mjs";
+import { createUpstream108UI } from "./upstream108.js";
+import { createLocal108Controls } from "./upstream108-controls.js";
 import { extractChatImagePaths, chatImageError } from "./dev-chat-images.mjs";
 import {observeCompletionViewport} from "./dev-task-notifications.mjs";
 import { createPetPersonaUI } from "./dev-pet-persona.mjs";
@@ -19847,7 +19851,7 @@ const todoPanel$1 = {
   currently: "Now",
   next: "Next",
   complete: "Done",
-  allCompleted: "All done",
+  allCompleted: "Plan steps completed",
   unfinished: "{{count}} unfinished",
   compactAria: "{{status}}, {{label}}: {{task}}, {{done}}/{{total}} completed",
   groupTitle: "{{label}} · {{count}}",
@@ -31646,7 +31650,7 @@ const builtinBrowser$1 = {
 const memory$5 = {
   hotInject: {
     title: "Hot memory injection",
-    description: "On by default. New sessions hard-inject a small hot-memory block into the system prompt: user + confirmed feedback only, up to 8 items / 2000 characters. project memories still go through memory_recall. Turn off to stop hard-injecting new sessions."
+    description: "On by default. New sessions hard-inject a small hot-memory block into the system prompt: user + confirmed feedback only, up to 18 items / 3500 characters (up to 6 pinned and 12 regular). project memories still go through memory_recall. Turn off to stop hard-injecting new sessions."
   },
   autoRecall: {
     title: "Auto-recall memories",
@@ -43684,7 +43688,7 @@ const todoPanel = {
   currently: "正在",
   next: "下一个",
   complete: "完成",
-  allCompleted: "全部完成",
+  allCompleted: "计划步骤已完成",
   unfinished: "未完成 {{count}}",
   compactAria: "{{status}}，{{label}}：{{task}}，已完成 {{done}}/{{total}}",
   groupTitle: "{{label}} · {{count}}",
@@ -55375,7 +55379,7 @@ const builtinBrowser = {
 const memory$1 = {
   hotInject: {
     title: "热记忆硬注入",
-    description: "默认开启。新建会话时把少量热记忆硬注入 system prompt：仅 user 与已确认 feedback，最多 8 条 / 2000 字。project 记忆仍走 memory_recall，不会硬塞。关闭后，新会话不再硬注入。"
+    description: "默认开启。新建会话时把少量热记忆硬注入 system prompt：仅 user 与已确认 feedback，最多 18 条 / 3500 字（置顶最多 6 条、普通最多 12 条）。project 记忆仍走 memory_recall，不会硬塞。关闭后，新会话不再硬注入。"
   },
   autoRecall: {
     title: "自动召回记忆",
@@ -84680,7 +84684,7 @@ function normalizeProviderQuotaPolicy(input2) {
 }
 const DEFAULT_SETTINGS = {
   autoWorktree: false,
-  alwaysReplyInChinese: false,
+  alwaysReplyInChinese: true,
   promptFollowUiLanguage: false,
   translateEngine: "llm",
   translateYoudaoAppKey: "",
@@ -101273,6 +101277,7 @@ function ChatImage({ src = "", alt = "", ...props }) {
     props.onError?.(event2);
   } });
 }
+const { ImageCard: ChatImageCard, MarkdownImage: ChatMarkdownImage } = createChatImagePresentation(reactExports, ChatImage, ChatImagePreview, { useSessionId: () => useSessionStore(s => s.selectedSessionId), localPath: localChatImagePath, isEnglish: () => instance.language?.startsWith("en") });
 let depth = 0;
 const listeners$2 = /* @__PURE__ */ new Set();
 function isEmbeddedBrowserSuppressed() {
@@ -152970,7 +152975,7 @@ const CodeBlockWithCopy = ({ children: children2, className }) => {
 };
 const createMarkdownComponents = (variant, decisionTable) => ({
   img({ node: _node, ...props }) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatImage, { ...props });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatMarkdownImage, { ...props });
   },
   code({ className, children: children2, ...rest }) {
     const isCodeBlock = className && /language-/.test(className);
@@ -154183,7 +154188,7 @@ const imageCheckerBackground = {
   backgroundSize: "16px 16px"
 };
 function getImageGridClass(count) {
-  return count <= 1 ? "mt-2 w-full max-w-[520px]" : "mt-2 grid w-full max-w-[420px] grid-cols-2 gap-2";
+  return "shine-chat-image-grid" + (count > 1 ? " is-multiple" : "");
 }
 const ImageThumbnail = ({ path: path2, isSingle = false, onPreview }) => {
   const { t: t2 } = useTranslation("conversationMessageBubble");
@@ -154193,7 +154198,6 @@ const ImageThumbnail = ({ path: path2, isSingle = false, onPreview }) => {
   const src = toImageSrc$3(path2);
   const name2 = getAttachmentName(path2);
   const isLocal = isLocalImagePath(path2);
-  const thumbnailHeightClass = isSingle ? "h-48 [@container(min-width:640px)]:h-56" : "h-32";
   reactExports.useEffect(() => {
     return () => {
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
@@ -154259,37 +154263,7 @@ const ImageThumbnail = ({ path: path2, isSingle = false, onPreview }) => {
     }
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "button",
-      {
-        type: "button",
-        className: `group relative flex w-full items-center justify-center overflow-hidden rounded-lg border border-border-subtle text-left btn-transition hover:border-accent-blue/35 ${thumbnailHeightClass}`,
-        style: imageCheckerBackground,
-        onClick: () => onPreview(src, path2),
-        onContextMenu: handleContextMenu,
-        title: path2,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            ChatImage,
-            {
-              src,
-              alt: name2,
-              loading: "lazy",
-              draggable: false,
-              className: "h-full w-full object-contain p-1"
-            }
-          ),
-          copyFeedback && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: `pointer-events-none absolute right-2 top-2 max-w-[calc(100%-1rem)] rounded-full px-2 py-1 text-tiny font-medium text-white shadow-lg ${copyFeedback.type === "success" ? "bg-accent-green/90" : "bg-accent-red/90"}`,
-              children: copyFeedback.message
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute inset-x-0 bottom-0 px-1.5 py-1 text-tiny text-white bg-black/60 truncate", children: name2 })
-        ]
-      }
-    ),
+    jsxRuntimeExports.jsx(ChatImageCard, { src, name: name2, isSingle, onPreview: () => onPreview(src, path2), onContextMenu: handleContextMenu, feedback: copyFeedback, english: instance.language?.startsWith("en") }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       ContextMenu$2,
       {
@@ -154716,6 +154690,7 @@ const MessageBubble$1 = React$1.memo(function MessageBubble2({
             "div",
             {
               ref: bubbleBodyRef,
+              style: imagePaths.length > 0 || /!\[/.test(plainTextContent) ? { width: "100%", minWidth: 0 } : void 0,
               className: `${isTeamWorkspace ? "w-full max-w-[92%] rounded-xl border px-3.5 py-3 text-sm shadow-sm markdown-renderer-surface markdown-renderer-surface--team-workspace" : isUser ? "max-w-[80%] px-1 py-1 text-sm" : settings3.showAssistantBubble ? "max-w-[80%] rounded-lg px-3 py-2 text-sm" : "w-full max-w-none px-0 py-0 text-sm"} ${isUser ? isTeamWorkspace ? "border-accent-blue/20 bg-accent-blue/10 text-text-primary" : "bg-transparent text-text-primary" : isTeamWorkspace ? "border-border-subtle bg-bg-secondary/85 text-text-primary" : isIntermediateAssistant ? settings3.showAssistantBubble ? "bg-bg-secondary text-text-muted/80" : "bg-transparent text-text-muted/80" : settings3.showAssistantBubble ? "bg-bg-secondary text-text-primary" : "bg-transparent text-text-primary"}`,
               children: [
                 turnDurationLabel && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -201265,7 +201240,8 @@ const MessageInput = ({
   }, [sessionId]);
   reactExports.useEffect(() => {
     if (!draftReplacement) return;
-    const nextText = draftReplacement.text ?? "";
+    const restoredText = draftReplacement.text ?? "";
+    const nextText = draftReplacement.append && text2 ? text2 + "\n\n" + restoredText : restoredText;
     setText(nextText);
     setOriginalText(null);
     if (draftKey) setDraftInput(draftKey, nextText);
@@ -251904,7 +251880,7 @@ function TodoGroup({
     /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "space-y-1", children: items.map((item, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(TodoRow, { item }, `${item.status}-${index2}-${item.content}`)) })
   ] });
 }
-const { InputFlowStatus, useInputFlow } = createInputFlowUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
+const { InputFlowStatus, useInputFlow, pruneWithdrawnNotices } = createInputFlowUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
 const SessionTodoPanel = ({ sessionId }) => {
   const inputFlow = useInputFlow(sessionId);
   const reviewPending = inputFlow && inputFlow.requiredRevision > inputFlow.reviewedRevision;
@@ -253086,6 +253062,7 @@ function formatRollbackFileChange(change) {
 const interactivePanelTimeoutMinutes = Math.round(INTERACTIVE_TOOL_TIMEOUT_MS / 6e4);
 const InteractivePanelExpiredNotice = ({ label: label2 }) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center my-2 px-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-2xl rounded-lg border border-border bg-bg-secondary/60 px-3 py-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-caption text-text-muted", children: label2 }) }) });
 const {useSendPreview,SendPreview}=createSendPreviewUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
+const TaskProgressUI = createTaskProgressUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});
 const ConversationView = ({ sessionId, isFocusMode = false, suppressInlinePrototypeCanvas = false, hideTopBars = false, jumpRequest, aboveInput }) => {
   const { t: t2 } = useTranslation("conversationConversationAgentStatusBar");
   const scrollRef = reactExports.useRef(null);
@@ -253139,6 +253116,11 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
   const [derivingForMessage, setDerivingForMessage] = reactExports.useState(null);
   const [liveInsertedItems, setLiveInsertedItems] = reactExports.useState([]);
   const [deferredLiveEntries, setDeferredLiveEntries] = reactExports.useState([]);
+  const withdrawalFlow = useInputFlow(sessionId);
+  reactExports.useEffect(() => {
+    setLiveInsertedItems(prev => pruneWithdrawnNotices(prev,withdrawalFlow?.inputs));
+    setDeferredLiveEntries(prev => pruneWithdrawnNotices(prev,withdrawalFlow?.inputs));
+  }, [withdrawalFlow?.version,liveInsertedItems,deferredLiveEntries]);
   const [expertDispatchNotices, setExpertDispatchNotices] = reactExports.useState([]);
   const [expertDispatchPanelExpanded, setExpertDispatchPanelExpanded] = reactExports.useState(false);
   const [expertDispatchPanelTouched, setExpertDispatchPanelTouched] = reactExports.useState(false);
@@ -254371,6 +254353,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
       showToast(t2("send.failed"), "error");
       throw Error("消息未进入发送流程");
     }
+    if(dispatch2.inputId) setDeferredLiveEntries(prev => prev.map(entry => entry.normalizedText===normalizedText && entry.sentAt===sentAt ? {...entry,inputId:dispatch2.inputId} : entry));
     const queueHint = resolvePromptOptimizerQueueHint(dispatch2);
     if (!dispatch2.scheduled) {
       void reloadConversation({ force: true });
@@ -254382,7 +254365,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
     if (queueHint.state === "enqueue_while_running") {
       const liveId = optimisticId;
       const expiresAt = Date.now() + 8e3;
-      setLiveInsertedItems((prev) => [...prev, { id: liveId, text: outboundText, expiresAt }]);
+      setLiveInsertedItems((prev) => [...prev, { id: liveId, inputId:dispatch2.inputId, text: outboundText, expiresAt }]);
       setTimeout(() => {
         setLiveInsertedItems((prev) => prev.filter((item) => item.id !== liveId));
       }, 8e3);
@@ -254397,7 +254380,7 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
         }
         setDeferredLiveEntries((prev) => [
           ...prev,
-          { normalizedText, sentAt, anchorBeforeTs, expiresAt: sentAt + 12e4 }
+          { inputId:dispatch2.inputId, normalizedText, sentAt, anchorBeforeTs, expiresAt: sentAt + 12e4 }
         ]);
       }
       return dispatch2;
@@ -255690,33 +255673,6 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
                       className: settings3.showAssistantAvatar ? "ml-10" : "pl-3"
                     }
                   ),
-                  isStreaming && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `${settings3.showAssistantAvatar ? "ml-10" : "pl-3"} flex flex-col justify-start mb-3 gap-1`, children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `rounded-lg px-3 py-2 text-sm flex items-center gap-2 ${streamingStatusDisplay.kind === "tool" ? "bg-accent-blue/10 border border-accent-blue/20 text-accent-blue" : "bg-bg-secondary text-text-muted"}`, children: [
-                      streamingStatusDisplay.kind === "tool" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "relative flex h-2 w-2 flex-shrink-0", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-blue opacity-75" }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "relative inline-flex rounded-full h-2 w-2 bg-accent-blue" })
-                      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "span",
-                        {
-                          className: `inline-block w-3 h-3 rounded-full flex-shrink-0 ${heartbeat2 && Date.now() - heartbeat2.lastBeatAt < 2e3 ? "bg-accent-blue animate-pulse" : "border border-text-muted/50 border-t-accent-blue animate-spin"}`
-                        }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "span",
-                        {
-                          className: streamingStatusDisplay.kind === "tool" ? "font-medium" : "",
-                          title: [
-                            thinkingSeconds > 0 ? t2("streamStatus.thinking", { duration: formatThinkingTime(thinkingSeconds) }) : "",
-                            approxTokenCount > 0 ? t2("streamStatus.approxTokens", { tokens: approxTokenCount > 1e3 ? `${(approxTokenCount / 1e3).toFixed(1)}K` : approxTokenCount }) : "",
-                            heartbeat2 && heartbeat2.beatCount > 0 ? t2("streamStatus.heartbeat", { seconds: heartbeat2.elapsedSeconds }) : ""
-                          ].filter(Boolean).join(" · ") || void 0,
-                          children: streamingStatusDisplay.label
-                        }
-                      ),
-                      thinkingSeconds > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-caption font-mono text-text-muted/60", children: formatThinkingTime(thinkingSeconds) })
-                    ] }) }),
-                    !!streamingStatusDisplay.detail && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `ml-5 max-w-[80%] truncate ${streamingStatusDisplay.kind === "tool" ? "text-xs text-accent-blue/80" : "text-caption text-text-muted/80"}`, title: streamingStatusDisplay.detail, children: streamingStatusDisplay.detail })
-                  ] }),
                   pendingPermission && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex justify-center my-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-accent-yellow/10 border border-accent-yellow/30 rounded-lg px-4 py-3 flex items-center gap-3", children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-text-primary", children: lastActivity?.detail || t2("permission.needConfirm") }),
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -255897,7 +255853,14 @@ const ConversationView = ({ sessionId, isFocusMode = false, suppressInlineProtot
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserPolicyWaitCard, { sessionId }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),
+          /* shine-task-progress: strip */ jsxRuntimeExports.jsx(TaskProgressUI.TaskProgress, {
+            sessionId, status:status2, messages:messages2, jobs:backgroundJobs,
+            streaming:sessionLive || isStreaming, hasActiveAgents,
+            startedAt:streamingStartTimes.get(sessionId), heartbeat:heartbeat2,
+            lastActivity, liveProgressText, toolStatus:toolStatus2,
+            pendingPermission, pendingAskQuestion, pendingPlanApproval
+          }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(InputFlowStatus, { sessionId, onRestore: (text, inputId) => { setDraftReplacement({id:inputId+":"+Date.now(),text,append:true}); void reloadConversation(); void refreshQueue(); } }),
                 !isSessionEnded && canAbortCurrentTurn && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-testid":"stop-generating-row", className: "flex justify-center px-4 py-2 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   "button",
                   {
@@ -274598,7 +274561,7 @@ function getFilteredActivity(activity2) {
   const detail2 = activity2?.detail?.trim();
   if (!detail2) return null;
   if (detail2.includes("Session started") || detail2.includes("Session ended")) return null;
-  if (!detail2.includes("[object Object]")) return detail2;
+  if (!detail2.includes("[object Object]")) return displayRuntimeActivity(detail2, instance.language.startsWith("zh"));
   const metadata2 = getRecord(activity2?.metadata);
   const toolName = typeof metadata2?.toolName === "string" ? metadata2.toolName : "";
   const toolInput = getRecord(metadata2?.toolInput);
@@ -361505,6 +361468,7 @@ function BrowserPaneHost({ onClose, extraActions } = {}) {
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserPolicyBar, { policy: policy2, copy: copy2, onResolve: resolvePolicy }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { "data-appearance-surface": "chrome", className: "flex h-9 shrink-0 items-center gap-1 border-b border-border bg-bg-primary px-2", children: [
+      jsxRuntimeExports.jsx(local108Controls.BrowserPageToChat,{compact:true,tabId:activeTabId}),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
@@ -382172,7 +382136,7 @@ function ChatPanel() {
     )
   ] });
 }
-const MAX_INLINE_ACTIVE_SESSIONS = 3;
+const MAX_INLINE_ACTIVE_SESSIONS = 8;
 function useSessionTree(sessions2) {
   return reactExports.useMemo(() => {
     const tree2 = orderSessionTree(sessions2);
@@ -382450,10 +382414,11 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
     [selectSession, projectScopeKey]
   );
   const handleEditingDone = reactExports.useCallback(() => setRenamingSessionId(null), [setRenamingSessionId]);
-  const renderSessionList = (sessions2, depths) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1", children: sessions2.map((session2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+  const renderSessionList = (sessions2, depths) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-shine-space-list": true, className: "space-y-0.5 pl-6", children: sessions2.map((session2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
     "div",
     {
       "data-session-id": session2.id,
+      className: "shine-space-session-row",
       "data-plan-mode": session2.config?.planModeEnabled === true ? "true" : void 0,
       children: /* @__PURE__ */ jsxRuntimeExports.jsx(TreeIndent, { depth: depths.get(session2.id) ?? 0, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         SessionListEntry,
@@ -382482,7 +382447,8 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: "rounded-lg border border-transparent overflow-hidden transition-colors hover:bg-bg-hover/30",
+      "data-shine-space-group": true,
+      className: "shine-space-group rounded-lg border border-transparent overflow-hidden",
       style: cardStyle,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -382492,7 +382458,7 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
               workDir: group2.type === "directory" || group2.type === "scratch" ? group2.key : void 0,
               workspaceId: group2.type === "workspace" ? group2.key : void 0
             }),
-            className: "w-full flex items-center gap-1.5 px-2.5 py-2 hover:bg-bg-hover btn-transition text-left select-none",
+            className: "shine-space-header w-full flex items-center gap-1.5 px-1.5 py-1.5 hover:bg-bg-hover btn-transition text-left select-none",
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
@@ -382522,7 +382488,7 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
                       /* @__PURE__ */ jsxRuntimeExports.jsx(
                         "span",
                         {
-                          className: `text-xs font-medium truncate leading-tight ${group2.type === "unassigned" ? "text-text-muted" : "text-text-primary"}`,
+                          className: `text-xs font-semibold truncate leading-tight ${group2.type === "unassigned" ? "text-text-muted" : "text-text-primary"}`,
                           title: group2.subtitle,
                           children: group2.title
                         }
@@ -382554,7 +382520,7 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
                     event2.stopPropagation();
                   },
                   disabled: quickCreateSessionInFlight,
-                  className: "flex items-center justify-center w-6 h-6 rounded hover:bg-bg-hover/60 text-text-muted hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed btn-transition flex-shrink-0",
+                  className: "shine-space-action flex items-center justify-center w-6 h-6 rounded hover:bg-bg-hover/60 text-text-muted hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed btn-transition flex-shrink-0",
                   title: t2("groupCards.quickCreateSession"),
                   "aria-label": t2("groupCards.quickCreateSession"),
                   children: quickCreateSessionInFlight ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderCircle, { className: "w-3.5 h-3.5 animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Plus$1, { className: "w-3.5 h-3.5" })
@@ -382568,7 +382534,7 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
                     event2.stopPropagation();
                     onOpenPicker();
                   },
-                  className: "flex items-center justify-center w-6 h-6 rounded hover:bg-bg-hover/60 text-text-muted hover:text-text-primary btn-transition flex-shrink-0",
+                  className: "shine-space-action flex items-center justify-center w-6 h-6 rounded hover:bg-bg-hover/60 text-text-muted hover:text-text-primary btn-transition flex-shrink-0",
                   title: t2("groupCards.viewAllSessions"),
                   children: /* @__PURE__ */ jsxRuntimeExports.jsx(History, { className: "w-3.5 h-3.5" })
                 }
@@ -382579,14 +382545,10 @@ const DirGroupCard = React$1.memo(function DirGroupCard2({
         !collapsed2 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
-            className: "px-2 pb-2 pt-1.5 space-y-2",
+            className: "shine-space-body px-1.5 pb-1.5 pt-0 space-y-0.5",
             style: contentStyle,
             children: [
-              hasActive && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-1", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny uppercase tracking-[0.12em] text-text-muted", children: t2("groupCards.activeSessions") }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-tiny text-text-muted", children: activeSessions.length })
-                ] }),
+              hasActive && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
                 renderSessionList(visibleActiveSessions, depthById),
                 hasHiddenActiveSessions && /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   "button",
@@ -385799,6 +385761,8 @@ function SessionsContent() {
   }, []);
   reactExports.useEffect(() => {
     reloadWorkspaces();
+    window.addEventListener("shineai:workspaces-reordered",reloadWorkspaces);
+    return()=>window.removeEventListener("shineai:workspaces-reordered",reloadWorkspaces);
   }, [reloadWorkspaces]);
   const sessionListScrollRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
@@ -386013,16 +385977,8 @@ function SessionsContent() {
     [groupedTopLevelSessions]
   );
   const projectGroups = reactExports.useMemo(
-    () => groupSessionsByProject(groupedTopLevelSessions, workspaces),
-    [groupedTopLevelSessions, workspaces]
-  );
-  const activeProjectGroups = reactExports.useMemo(
-    () => projectGroups.filter((g2) => g2.sessions.some((s2) => !DONE_STATUSES.has(s2.status))),
-    [projectGroups]
-  );
-  const inactiveProjectGroups = reactExports.useMemo(
-    () => projectGroups.filter((g2) => !g2.sessions.some((s2) => !DONE_STATUSES.has(s2.status))),
-    [projectGroups]
+    () => groupSessionsByProject(statusFilteredSessions, workspaces),
+    [statusFilteredSessions, workspaces]
   );
   favoriteTopLevelSessions.some((session2) => EXECUTING_STATUSES.has(session2.status));
   const {
@@ -386207,7 +386163,11 @@ function SessionsContent() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-2 text-xs", children: t2("sidebar.emptyHint") })
             ] })
           ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 pb-2 flex-shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { "data-shine-space-heading": true, className: "flex items-center gap-2 px-3 pt-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm font-semibold text-text-primary", children: groupBy2 === "project" && filteredSessions === null ? instance.language.startsWith("zh") ? "空间" : "Spaces" : t2("label.sessions") }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-text-muted", children: "(" + (filteredSessions?.length ?? (groupBy2 === "project" ? projectGroups.length : statusFilteredSessions.length)) + ")" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-3 pb-2 pt-2 flex-shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
               SessionFilters,
               {
                 searchQuery,
@@ -386311,7 +386271,7 @@ function SessionsContent() {
                 /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: contentSearchLoading ? t2("sidebar.searching") : t2("sidebar.noMatch") }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-1 text-tiny", children: contentSearchLoading ? t2("sidebar.pleaseWait") : t2("sidebar.tryOtherKeywords") })
               ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                favoriteTopLevelSessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                groupBy2 === "time" && favoriteTopLevelSessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
                   TimeGroupCard,
                   {
                     group: {
@@ -386340,15 +386300,13 @@ function SessionsContent() {
                     group2.key
                   );
                 }),
-                groupBy2 === "project" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-                  activeProjectGroups.map((group2) => {
-                    const hasRunning = group2.sessions.some((session2) => EXECUTING_STATUSES.has(session2.status));
+                groupBy2 === "project" && projectGroups.map((group2) => {
                     return /* @__PURE__ */ jsxRuntimeExports.jsx(
                       DirGroupCard,
                       {
                         group: group2,
-                        collapsed: isProjectCollapsed(group2.key, hasRunning),
-                        onToggleCollapse: () => toggleProjectCollapse(group2.key, hasRunning),
+                        collapsed: isProjectCollapsed(group2.key, true),
+                        onToggleCollapse: () => toggleProjectCollapse(group2.key, true),
                         onOpenPicker: () => setPickerGroup(group2),
                         onQuickCreateSession: handleQuickCreateSession,
                         quickCreateSessionInFlight: quickCreateGroupKeys.has(group2.key),
@@ -386357,20 +386315,7 @@ function SessionsContent() {
                       },
                       group2.key
                     );
-                  }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    DormantProjectGroupsCard,
-                    {
-                      groups: inactiveProjectGroups,
-                      onNewSession: (group2) => {
-                        if (group2.type === "directory" || group2.type === "scratch") openNewSessionDialog(group2.key, void 0);
-                        else if (group2.type === "workspace") openNewSessionDialog(void 0, group2.key);
-                      },
-                      onOpenPicker: (group2) => setPickerGroup(group2),
-                      onDirContextMenu: handleDirContextMenu
-                    }
-                  )
-                ] })
+                  })
               ] }),
               hasMoreSessions && topLevelSessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "button",
@@ -405078,6 +405023,8 @@ function BrowserSettingsSection() {
     }
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
+      jsxRuntimeExports.jsx(local108Controls.CookieImportSection, {}),
+      jsxRuntimeExports.jsx(local108Controls.BrowserPageToChat, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       SectionHeader,
       {
@@ -405392,6 +405339,7 @@ function RelaySettingsContent() {
   ] });
 }
 const COMMON_VISIBLE_SUBTABS = /* @__PURE__ */ new Set([
+  "web-llm", "daily-board",
   "general",
   "appearance",
   "builtin-browser",
@@ -405415,6 +405363,7 @@ function filterSettingsNavForView(categories2, fullView, revealedNav) {
   })).filter((cat) => cat.subTabs.length > 0);
 }
 const buildNavCategories = (t2) => [
+  {id:"cat-local-tools",label:instance.language.startsWith("zh")?"工作工具":"Work tools",icon:jsxRuntimeExports.jsx(Globe,{className:"w-4 h-4"}),subTabs:[{id:"daily-board",label:instance.language.startsWith("zh")?"工作日报":"Daily report"},{id:"web-llm",label:instance.language.startsWith("zh")?"网页大模型":"Web models"}]},
   {
     id: "cat-general",
     label: t2("nav.categories.general"),
@@ -405509,6 +405458,7 @@ function getCategoryForNav(navId, navCategories) {
   return navCategories.find((cat) => cat.subTabs.some((t2) => t2.id === navId));
 }
 const TAB_TO_NAV = {
+  "web-llm":"web-llm", "daily-board":"daily-board",
   general: "general",
   account: "account",
   theme: "appearance",
@@ -410256,6 +410206,8 @@ function SettingsSurface({ onClose, initialTab, variant = "modal" }) {
           );
         }) }) }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `mx-auto px-8 ${isFlexPage ? `pt-6 pb-0 ${contentWidth} flex-1 flex flex-col min-h-0` : `py-8 ${contentWidth}`}`, children: [
+          activeNav === "web-llm" && jsxRuntimeExports.jsx(local108Upstream.WebLlmSettingsSection, {}),
+          activeNav === "daily-board" && jsxRuntimeExports.jsx(local108Controls.DailyBoardEntry, {}),
           activeNav === "general" && /* @__PURE__ */ jsxRuntimeExports.jsx(GeneralContent, { isNoviceMode }),
           activeNav === "storage-data" && /* @__PURE__ */ jsxRuntimeExports.jsx(StorageDataSettings, {}),
           activeNav === "appearance" && /* @__PURE__ */ jsxRuntimeExports.jsx(AppearanceSettingsSection, {}),
@@ -410884,6 +410836,7 @@ function WorkspaceContent() {
         description: t2("workspace.description")
       }
     ),
+    jsxRuntimeExports.jsx(local108Controls.WorkspaceOrderSection, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(WorkspaceTab, {})
   ] });
 }
@@ -417053,6 +417006,7 @@ ${payload.stderrSnippet || "(empty)"}`
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(RootErrorBoundary, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(AppLayout, {}),
+    jsxRuntimeExports.jsx(local108Controls.Global108Host, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ProductPreviewHost, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(GlobalToast, {}),
     /* @__PURE__ */ jsxRuntimeExports.jsx(ProviderQuotaFloat, {}),
@@ -417086,6 +417040,8 @@ ${payload.stderrSnippet || "(empty)"}`
     )
   ] });
 }
+const local108Upstream = createUpstream108UI({useTranslation,create$5,reactExports,useUIStore,jsxRuntimeExports,createLucideIcon,instance,useWorkbenchDockStore,reactDomExports,useSessionStore,cn,useFileManagerStore,useWorkGroupStore,MarkdownRenderer$1});
+const local108Controls = createLocal108Controls({reactExports,jsxRuntimeExports,useUIStore,useSessionStore,upstream:local108Upstream});
 const hash = window.location.hash;
 function resolveStoredThemeId() {
   try {

@@ -7,7 +7,7 @@ import vm from 'node:vm';
 import {createRequire} from 'node:module';
 import {fromMarkdown} from 'mdast-util-from-markdown';
 import {extractChatImagePaths,chatImageError} from '../src/renderer/assets/dev-chat-images.mjs';
-import {patchChatImagesMain,patchChatImagesPreload,patchChatImagesRenderer} from '../scripts/patch-chat-images.mjs';
+import {patchChatImagesMain,patchChatImagesPreload,patchChatImagesRenderer,patchChatImagesHtml} from '../scripts/patch-chat-images.mjs';
 import {patchFileLinksMain,patchFileLinksPreload} from '../scripts/patch-file-links.mjs';
 const require=createRequire(import.meta.url);
 const {wrapReadFile,removeSessionCopies}=require('../src/main/extensions/chat-image-cache.cjs');
@@ -26,6 +26,7 @@ test('bundled message parser uses Markdown boundaries and all patches are repeat
   const read=file=>fs.readFileSync(new URL('../src/'+file,import.meta.url),'utf8');
   const renderer=read('renderer/assets/index-0LVJEr5c.js');
   for(const [source,patch] of [[renderer,patchChatImagesRenderer],[read('main/index.js'),patchChatImagesMain],[read('preload/index.js'),patchChatImagesPreload]]) assert.equal(patch(source),source);
+  assert.equal(patchChatImagesHtml(read('renderer/index.html')),read('renderer/index.html'));
   assert.equal(patchFileLinksMain(read('main/index.js')),read('main/index.js'));
   assert.equal(patchFileLinksPreload(read('preload/index.js')),read('preload/index.js'));
   const a=renderer.indexOf('const IMAGE_TAG_RE ='),b=renderer.indexOf('const AUTO_COMPACT_NOTIFICATION_TEXT',a);

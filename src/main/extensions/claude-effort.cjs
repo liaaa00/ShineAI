@@ -15,6 +15,7 @@ function isCustomEndpoint(value) {
   catch { return false; }
 }
 function configureQueryOptions(adapter, id, config, options) {
+  require('./claude-auth.cjs').configureAuthentication(config, options);
   const effort = selectedEffort(adapter, id, config);
   if (!effort) { delete options.effort; return options; }
   options.effort = effort;

@@ -22,7 +22,9 @@ export function patchRunningInputRenderer(s){
  s=s.replace(/\r\n/g,'\n');
  if(!s.includes('import { createInputFlowUI }'))s='import { createInputFlowUI } from "./dev-running-input.mjs";\n'+s;
  if(!s.includes('import { createSendPreviewUI }'))s='import { createSendPreviewUI } from "./dev-send-preview.mjs";\n'+s;
- s=once(s,'const ConversationView = ({ sessionId,', 'const {useSendPreview,SendPreview}=createSendPreviewUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});\nconst ConversationView = ({ sessionId,');
+ // Other conversation modules may add their initializer before ConversationView.
+ // Detect this declaration independently of its adjacency to that component.
+ if(!s.includes('const {useSendPreview,SendPreview}=createSendPreviewUI('))s=once(s,'const ConversationView = ({ sessionId,', 'const {useSendPreview,SendPreview}=createSendPreviewUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});\nconst ConversationView = ({ sessionId,');
  s=once(s,'  } = useConversation(sessionId);\n  const [resuming,', '  } = useConversation(sessionId);\n  const sendPreview = useSendPreview(sessionId,messages2);\n  const [resuming,');
  s=once(s,'const sendWithSmartScheduling = reactExports.useCallback(async (text2, options2) => {','const sendWithSmartScheduling = reactExports.useCallback((text2, options2) => sendPreview.run(text2,options2,async () => {');
  s=once(s,'    await refreshQueue();\n  }, [\n    reloadConversation,','    await refreshQueue();\n    return dispatch2;\n  }), [\n    reloadConversation,');
@@ -39,7 +41,7 @@ export function patchRunningInputRenderer(s){
  s=once(s,'setText((cur) => cur || text2);','setText((cur) => cur || fullMessage);');
  s=once(s,'const STATUS_META = {\n  in_progress:', 'const STATUS_META = {\n  cancelled: {get label(){return instance.language.startsWith("zh")?"已取消":"Cancelled";},dotClass:"bg-text-muted",textClass:"text-text-muted line-through",badgeClass:"border-border/60 text-text-muted"},\n  in_progress:');
  s=once(s,'  const meta2 = STATUS_META[item.status];','  const meta2 = STATUS_META[item.status] || STATUS_META.pending;');
- s=once(s,'const SessionTodoPanel = ({ sessionId }) => {','const { InputFlowStatus, useInputFlow } = createInputFlowUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});\nconst SessionTodoPanel = ({ sessionId }) => {\n  const inputFlow = useInputFlow(sessionId);\n  const reviewPending = inputFlow && inputFlow.requiredRevision > inputFlow.reviewedRevision;');
+ if(!s.includes('  const inputFlow = useInputFlow(sessionId);'))s=once(s,'const SessionTodoPanel = ({ sessionId }) => {','const { InputFlowStatus, useInputFlow } = createInputFlowUI({React:reactExports,jsx:jsxRuntimeExports,language:()=>instance.language});\nconst SessionTodoPanel = ({ sessionId }) => {\n  const inputFlow = useInputFlow(sessionId);\n  const reviewPending = inputFlow && inputFlow.requiredRevision > inputFlow.reviewedRevision;');
  s=once(s,'    const completed = [];\n    for (const item of todos.items)', '    const completed = [];\n    const cancelled = [];\n    for (const item of todos.items)');
  s=once(s,'      } else {\n        completed.push(item);\n      }\n    }\n    return {\n      total: todos.items.length,', '      } else if(item.status === "cancelled") {\n        cancelled.push(item);\n      } else {\n        completed.push(item);\n      }\n    }\n    return {\n      cancelled,\n      total: todos.items.length,');
  s=once(s,'const completionPercent = Math.round(grouped.completed.length / grouped.total * 100);', 'const completionPercent = Math.round(grouped.completed.length / Math.max(1,grouped.total-grouped.cancelled.length) * 100);');
@@ -50,7 +52,28 @@ export function patchRunningInputRenderer(s){
  s=once(s,'const statusLabel2 = unfinishedCount === 0 ? t2("todoPanel.allCompleted") : t2("todoPanel.unfinished", { count: unfinishedCount });','const statusLabel2 = reviewPending ? (instance.language.startsWith("zh") ? "计划待核对" : "Plan needs review") : grouped.cancelled.length === grouped.total ? (instance.language.startsWith("zh") ? "任务已取消" : "Tasks cancelled") : unfinishedCount === 0 ? t2("todoPanel.allCompleted") : t2("todoPanel.unfinished", { count: unfinishedCount });');
  s=once(s,'jsxRuntimeExports.jsx("div", { className: "px-4 pb-0.5 pt-0.5", children:', 'jsxRuntimeExports.jsx("div", { "data-testid":"session-todo-panel", className: "px-4 pb-0.5 pt-0.5", children:');
  s=once(s,'items: grouped.completed, muted: true })\n      ]', 'items: grouped.completed, muted: true }),\n        jsxRuntimeExports.jsx(TodoGroup, {title:instance.language.startsWith("zh")?"已取消（不计入完成）":"Cancelled (not completed)",items:grouped.cancelled,muted:true})\n      ]');
- if(!s.includes('jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),'))s=once(s,'jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),','jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),\n          jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),');
+ if(!s.includes('jsxRuntimeExports.jsx(InputFlowStatus,'))s=once(s,'jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),','jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),\n          jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),');
+ const inputFlowCall='jsxRuntimeExports.jsx(InputFlowStatus, { sessionId, onRestore: (text, inputId) => { setDraftReplacement({id:inputId+":"+Date.now(),text,append:true}); void reloadConversation(); void refreshQueue(); } }),';
+ if(!s.includes(inputFlowCall)){
+  const priorCall='jsxRuntimeExports.jsx(InputFlowStatus, { sessionId, isStreaming, onRestore: (text, inputId) => { setDraftReplacement({id:inputId+":"+Date.now(),text,append:true}); void reloadConversation(); void refreshQueue(); } }),';
+  s=s.includes(priorCall)?s.replace(priorCall,inputFlowCall):once(s,'jsxRuntimeExports.jsx(InputFlowStatus, { sessionId }),',inputFlowCall);
+ }
+ s=once(s,'    const nextText = draftReplacement.text ?? "";', '    const restoredText = draftReplacement.text ?? "";\n    const nextText = draftReplacement.append && text2 ? text2 + "\\n\\n" + restoredText : restoredText;');
+ s=once(s,'const { InputFlowStatus, useInputFlow } = createInputFlowUI', 'const { InputFlowStatus, useInputFlow, pruneWithdrawnNotices } = createInputFlowUI');
+ s=once(s,'  const [deferredLiveEntries, setDeferredLiveEntries] = reactExports.useState([]);',`  const [deferredLiveEntries, setDeferredLiveEntries] = reactExports.useState([]);
+  const withdrawalFlow = useInputFlow(sessionId);
+  reactExports.useEffect(() => {
+    setLiveInsertedItems(prev => pruneWithdrawnNotices(prev,withdrawalFlow?.inputs));
+    setDeferredLiveEntries(prev => pruneWithdrawnNotices(prev,withdrawalFlow?.inputs));
+  }, [withdrawalFlow?.version,liveInsertedItems,deferredLiveEntries]);`);
+ s=once(s,'    const queueHint = resolvePromptOptimizerQueueHint(dispatch2);',`    if(dispatch2.inputId) setDeferredLiveEntries(prev => prev.map(entry => entry.normalizedText===normalizedText && entry.sentAt===sentAt ? {...entry,inputId:dispatch2.inputId} : entry));
+    const queueHint = resolvePromptOptimizerQueueHint(dispatch2);`);
+ s=once(s,'setLiveInsertedItems((prev) => [...prev, { id: liveId, text: outboundText, expiresAt }]);','setLiveInsertedItems((prev) => [...prev, { id: liveId, inputId:dispatch2.inputId, text: outboundText, expiresAt }]);');
+ // The fallback entry is created after dispatch and can carry its input id immediately.
+ const withdrawalSendStart=s.indexOf('const sendWithSmartScheduling ='),withdrawalSendEnd=s.indexOf('  const handleDecisionTableSubmit',withdrawalSendStart);
+ let withdrawalSend=s.slice(withdrawalSendStart,withdrawalSendEnd);
+ withdrawalSend=once(withdrawalSend,'          { normalizedText, sentAt, anchorBeforeTs, expiresAt: sentAt + 12e4 }','          { inputId:dispatch2.inputId, normalizedText, sentAt, anchorBeforeTs, expiresAt: sentAt + 12e4 }');
+ s=s.slice(0,withdrawalSendStart)+withdrawalSend+s.slice(withdrawalSendEnd);
  s=patchStopButtonLayout(s);
  s=once(s,'text: "已插入当前运行输入流，AI 会在当前回合接收"','text: "消息已排队，等待后续模型请求"');
  s=s.replaceAll('已插入当前运行输入流 · AI 会在当前回合接收','消息已排队 · 等待后续模型请求').replaceAll('Inserted into the running input stream · the AI will receive it this turn','Queued · waiting for a subsequent model request');
@@ -70,6 +93,11 @@ function patchStopButtonLayout(s){
  s=s.slice(0,begin)+s.slice(end);
  return once(s,'          jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),',moved+'\n          jsxRuntimeExports.jsx(SessionTodoPanel$1, { sessionId }),');
 }
-export function patchRunningInputPreload(s){return once(s,'getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId),',`inputFlow: {get: id => electron.ipcRenderer.invoke("dev:input-flow:get",id),retry:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:retry",id,inputId),onChanged:callback=>{const listener=(_event,value)=>callback(value);electron.ipcRenderer.on("dev:input-flow:changed",listener);return()=>electron.ipcRenderer.removeListener("dev:input-flow:changed",listener);}},\n  getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId),`);}
+export function patchRunningInputPreload(s){
+ if(!s.includes('inputFlow: {'))s=once(s,'getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId),',`inputFlow: {get: id => electron.ipcRenderer.invoke("dev:input-flow:get",id),retry:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:retry",id,inputId),onChanged:callback=>{const listener=(_event,value)=>callback(value);electron.ipcRenderer.on("dev:input-flow:changed",listener);return()=>electron.ipcRenderer.removeListener("dev:input-flow:changed",listener);}},\n  getRequestSummary: (sessionId) => electron.ipcRenderer.invoke("dev:request-summary", sessionId),`);
+ if(s.includes('resolve:(id,inputId,action)'))return s;
+ s=once(s,'inputFlow: {get:', 'inputFlow: {cancel:(id,inputId)=>electron.ipcRenderer.invoke("dev:input-flow:cancel",id,inputId),get:');
+ return once(s,'dev:input-flow:cancel",id,inputId),get:', 'dev:input-flow:cancel",id,inputId),resolve:(id,inputId,action)=>electron.ipcRenderer.invoke("dev:input-flow:resolve",id,inputId,action),get:');
+}
 export function patchRunningInputFiles(){const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');for(const [name,patch]of [['src/main/index.js',patchRunningInputMain],['src/renderer/assets/index-0LVJEr5c.js',patchRunningInputRenderer],['src/preload/index.js',patchRunningInputPreload]]){const file=path.join(root,name);fs.writeFileSync(file,patch(fs.readFileSync(file,'utf8')));}}
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))patchRunningInputFiles();

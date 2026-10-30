@@ -28,7 +28,7 @@ export async function completeOnboarding(page) {
   await page.locator('[data-onboarding-wizard-container]').waitFor({ state: 'hidden', timeout: 30000 });
 }
 export async function openTestApp(dataDir, ports = { auth: 19312, meeting: 18082 }, executablePath, extraEnv = {}) {
-  const env = { ...process.env, ...extraEnv, SHINEAI_DEV_USER_DATA_DIR: dataDir, SHINEAI_LOCAL_AUTH_PORT: String(ports.auth), SHINEAI_MEETING_GATEWAY_PORT: String(ports.meeting) };
+  const env = { ...process.env, SHINEAI_DEV_BUTLER_DIR: path.join(dataDir, 'butler'), ...extraEnv, SHINEAI_DEV_USER_DATA_DIR: dataDir, SHINEAI_LOCAL_AUTH_PORT: String(ports.auth), SHINEAI_MEETING_GATEWAY_PORT: String(ports.meeting) };
   // Explicit legacy-install tests must also isolate the former development
   // edition's profile and ports; never fall through to the user's live data.
   if (executablePath) Object.assign(env, { SPECTRAI_DEV_USER_DATA_DIR: dataDir, SPECTRAI_LOCAL_AUTH_PORT: String(ports.auth), SPECTRAI_MEETING_GATEWAY_PORT: String(ports.meeting) });

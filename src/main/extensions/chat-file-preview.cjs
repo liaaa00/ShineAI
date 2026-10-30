@@ -32,6 +32,7 @@ function registerChatFilePreview(guard, electron) {
   const { ipcMain, dialog, BrowserWindow, shell } = electron;
   ipcMain.handle('dev:chat-file:prepare', async (event, { path: input, context } = {}) => {
     try {
+      input = require('./moved-path.cjs').resolveMoved(input);
       if (typeof input === 'string' && guard.validate(input, 'read', context).allowed && !fs.existsSync(input)) {
         return { success: true, path: input, kind: 'file' };
       }

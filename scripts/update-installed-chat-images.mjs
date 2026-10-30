@@ -1,9 +1,9 @@
-// Patch only chat image parsing, reading and the session-copy extension.
+// Patch chat images against the installed bundle, preserving unrelated work.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {patchChatImagesMain,patchChatImagesPreload,patchChatImagesRenderer} from './patch-chat-images.mjs';
+import {patchChatImagesMain,patchChatImagesPreload,patchChatImagesRenderer,patchChatImagesHtml} from './patch-chat-images.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 if(!process.argv[2])throw Error('Pass the independent application installation directory');
 const install=path.resolve(process.argv[2]),appRoot=path.join(install,'resources/app'),output=path.join(appRoot,'out');
@@ -13,7 +13,8 @@ const inputs=new Map([
  ['main/index.js',Buffer.from(patchChatImagesMain(fs.readFileSync(path.join(output,'main/index.js'),'utf8')))],
  ['preload/index.js',Buffer.from(patchChatImagesPreload(fs.readFileSync(path.join(output,'preload/index.js'),'utf8')))],
  ['renderer/assets/index-0LVJEr5c.js',Buffer.from(patchChatImagesRenderer(fs.readFileSync(path.join(output,'renderer/assets/index-0LVJEr5c.js'),'utf8')))],
- ...['main/extensions/chat-image-cache.cjs','renderer/assets/dev-chat-images.mjs'].map(name=>[name,fs.readFileSync(path.join(root,'out',name))])
+ ['renderer/index.html',Buffer.from(patchChatImagesHtml(fs.readFileSync(path.join(output,'renderer/index.html'),'utf8')))],
+ ...['main/extensions/chat-image-cache.cjs','renderer/assets/dev-chat-images.mjs','renderer/assets/dev-chat-image-layout.mjs','renderer/assets/dev-chat-images.css'].map(name=>[name,fs.readFileSync(path.join(root,'out',name))])
 ]);
 const changes=[];
 for(const [relative,bytes]of inputs){

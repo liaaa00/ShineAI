@@ -7,7 +7,7 @@ const output = path.join(root, 'out');
 // The only replaced directory is the generated output immediately below the project root.
 if (path.dirname(output) !== root || path.basename(output) !== 'out' || fs.lstatSync(root).isSymbolicLink()) throw new Error('Invalid build root');
 if (fs.existsSync(output) && fs.lstatSync(output).isSymbolicLink()) throw new Error('Refusing to replace linked output');
-fs.rmSync(output, { recursive: true, force: true });
+fs.rmSync(output, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 fs.cpSync(path.join(root, 'src'), output, { recursive: true });
 const inventory = [];
 function visit(directory) { for (const entry of fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))) { const file=path.join(directory,entry.name); if(entry.isSymbolicLink())throw new Error('Linked source'); if(entry.isDirectory())visit(file); else inventory.push({path:path.relative(output,file).replaceAll('\\','/'),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}); } }

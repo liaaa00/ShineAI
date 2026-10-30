@@ -1,0 +1,27 @@
+/* Space > session rows follow the existing theme colors in every appearance mode. */
+.shine-space-group .shine-space-action {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.shine-space-group:hover .shine-space-action,
+.shine-space-group:focus-within .shine-space-action {
+  opacity: 1;
+}
+.shine-space-group .shine-space-body > button {
+  padding-left: 1.5rem;
+}
+.shine-space-session-row > .cursor-pointer,
+.shine-space-session-row > .border-l > .cursor-pointer {
+  min-height: 34px;
+  background-color: transparent;
+}
+.shine-space-session-row > .cursor-pointer:hover,
+.shine-space-session-row > .border-l > .cursor-pointer:hover {
+  background-color: color-mix(in srgb, var(--color-bg-hover) 55%, transparent);
+}
+@media (hover: none) {
+  .shine-space-group .shine-space-action { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shine-space-group .shine-space-action { transition: none; }
+}

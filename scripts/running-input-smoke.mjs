@@ -2,9 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import assert from 'node:assert/strict';
+import {createHash,randomUUID} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {root,openTestApp,completeOnboarding} from './electron-test-helper.mjs';
-const dir=path.join(root,'artifacts/running-input');fs.mkdirSync(dir,{recursive:true});
+const installedExecutable=process.argv.includes('--installed')?path.resolve('E:/AI/ShineAI/ShineAI.exe'):undefined;
+const openInputTestApp=(data,ports)=>openTestApp(data,ports,installedExecutable);
+const dir=path.join(root,'artifacts',installedExecutable?'running-input-installed':'running-input');fs.mkdirSync(dir,{recursive:true});
 const data=path.join(root,'.test-data','running-input-'+Date.now()),workspace=path.join(data,'workspace');fs.mkdirSync(workspace,{recursive:true});
 const report={checks:{},errors:[],scope:'Isolated profile; actual native adapter and renderer against local deterministic HTTP fixture. Proves request delivery, version checks and layout; does not prove a third-party model will follow instructions.'};
 const requests=[],gates=new Map(),waiting=new Map();
@@ -31,7 +34,7 @@ async function select(){await page.evaluate(async({aliases,sessionId})=>{const m
 const backups=[];
 try{
  for(const scheme of ['shineai-dev','claudeops-dev']){const key='HKCU\\Software\\Classes\\'+scheme,file=path.join(dir,scheme+'.reg');try{execFileSync('reg.exe',['export',key,file,'/y'],{stdio:'ignore',windowsHide:true});backups.push({key,file});}catch{backups.push({key});}}
- ({app,page}=await openTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));await completeOnboarding(page);
+ ({app,page}=await openInputTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));await completeOnboarding(page);
  await page.evaluate(()=>window.shineAI.settings.update('backgroundAiAnalysisEnabled',false));
  const created=await page.evaluate(async({workspace,url})=>{
   const p=await window.shineAI.provider.create({id:'input-fixture',name:'本地消息投递验证',adapterType:'openai-api',command:'api',enabled:true,apiBaseUrl:url,apiKey:'local-fixture-only',defaultModel:'input-fixture'});
@@ -45,10 +48,12 @@ try{
  const sent=await page.evaluate(({id,text})=>window.shineAI.session.sendMessage(id,text,{runningStrategy:'enqueue_while_running'}),{id:sessionId,text:correction});assert.equal(sent.success,true,JSON.stringify(sent));
  await until(async()=>['queued','submitted'].includes((await state()).inputs[0]?.state),'pending delivery');
  assert.equal(requests.length,2);await page.getByTestId('session-todo-panel').getByText('计划待核对',{exact:true}).waitFor();
- await page.getByTestId('input-flow-status').getByText(/排队中|等待投递确认/).first().waitFor();
+ await page.getByTestId('input-flow-status').getByText(/排队中/).first().waitFor();
  await page.waitForTimeout(3200);
- assert.equal(await page.getByTestId('input-flow-status').getByText(/排队中|等待投递确认/).first().isVisible(),true);
+ assert.equal(await page.getByTestId('input-flow-status').getByText(/排队中/).first().isVisible(),true);
  assert.match(await page.getByTestId('input-flow-status').innerText(),/先分析，不要修改，保留现有配置/);
+ assert.equal(await page.getByTestId('plan-review-hint').count(),0);
+ report.checks.planReviewRunsWithoutExtraComposerHint=true;
  report.checks.queuedMessageKeepsDetailsUntilDelivered=true;
  await page.screenshot({path:path.join(dir,'queued-correction.png')});
  report.checks.queueRemovalDoesNotClaimRequestDelivery=true;
@@ -56,15 +61,30 @@ try{
  const wire=requests[2];assert.ok(wire.messages.some(m=>m.role==='user'&&typeof m.content==='string'&&m.content.includes(correction)));
  const marker=wire.messages.find(m=>m.role==='user'&&m.content?.includes?.('data-shine-input='));assert.ok(marker);assert.match(marker.content,/input_revision: 1/);
  const delivery=await state();assert.equal(delivery.inputs[0].state,'sent');assert.equal(delivery.reviewedRevision,1);
- await page.getByTestId('input-flow-status').getByText('消息已送出',{exact:true}).waitFor();
- assert.equal((await page.getByTestId('input-flow-status').innerText()).trim(),'消息已送出');
  await page.getByTestId('input-flow-status').waitFor({state:'detached',timeout:10000});
  assert.equal((await state()).inputs[0].state,'sent');
  assert.equal((await state()).inputs[0].text,correction);
  await app.evaluate(({webContents},value)=>{webContents.getAllWebContents().find(w=>w.getURL().includes('/renderer/index.html')).send('dev:input-flow:changed',value);},await state());
  await page.waitForTimeout(150);assert.equal(await page.getByTestId('input-flow-status').count(),0);
- report.checks.repeatedSnapshotDoesNotReplayExpiredSuccess=true;
- report.checks.successNoticeHidesAfterThreeSecondsWithoutClearingDeliveryRecord=true;
+ report.checks.repeatedReceiptDoesNotShowSuccessStatus=true;
+ report.checks.deliveredInputImmediatelyLeavesQueueWithoutClearingRecord=true;
+ // Reproduce the three SDK submissions from the screenshot while the actual
+ // HTTP request remains in flight. Only the renderer snapshot is simulated;
+ // the real ledger and live request remain untouched.
+ // Keep the injected snapshot ahead of polling so a real snapshot cannot mask
+ // a visibility regression before the assertion. The next real mutation will
+ // reach the same version; restoring the UI below does not mutate the ledger.
+ const submittedSnapshot={...delivery,version:delivery.version+1,requiredRevision:delivery.reviewedRevision+3,inputs:[...delivery.inputs,...Array.from({length:3},(_,i)=>({id:'sdk-submitted-'+i,state:'submitted',canCancel:false,transport:'sdk',text:'已提交的补充消息 '+i}))]};
+ await app.evaluate(({webContents},value)=>{webContents.getAllWebContents().find(w=>w.getURL().includes('/renderer/index.html')).send('dev:input-flow:changed',value);},submittedSnapshot);
+ await page.getByTestId('stop-generating-row').waitFor();
+ await page.waitForTimeout(1200);
+ assert.equal(await page.getByTestId('input-flow-status').count(),0);
+ assert.equal(await page.getByTestId('plan-review-hint').count(),0);
+ assert.equal(requests.length,4);
+ assert.deepEqual((await state()).inputs,delivery.inputs);
+ await page.screenshot({path:path.join(dir,'submitted-hidden-while-running.png')});
+ report.checks.threeSubmittedSdkRecordsHiddenWhileResponseStillRunning=true;
+ await app.evaluate(({webContents},value)=>{webContents.getAllWebContents().find(w=>w.getURL().includes('/renderer/index.html')).send('dev:input-flow:changed',value);},{...delivery,version:submittedSnapshot.version});
  await until(async()=>!await page.getByTestId('session-todo-panel').getByText('计划待核对',{exact:true}).count(),'plan reviewed');
  const board=page.getByTestId('session-todo-panel');await board.locator('button').first().click();await board.getByText('已取消（不计入完成）',{exact:true}).waitFor();
  assert.match(await board.innerText(),/旧方案：直接改配置/);
@@ -75,12 +95,34 @@ try{
  await board.locator('button').first().click();await measure('collapsedBoardDoesNotOverlapStop');
  await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/renderer/index.html'));w.setSize(920,760);});
  await page.waitForTimeout(300);await measure('smallWindowDoesNotOverlapStop');await page.screenshot({path:path.join(dir,'small-window.png')});
+ // Send and withdraw through the actual composer while the real HTTP request
+ // remains held. Existing unsent draft text must survive restoration.
+ const withdrawnText='撤回样例：这条要求不应进入后续请求',draft='输入框里刚写的新草稿';
+ const composer=page.locator('textarea').first();await composer.fill(withdrawnText);await composer.press('Enter');
+ await until(async()=>(await state()).inputs.some(i=>i.text===withdrawnText&&i.canCancel),'actual composer input is cancellable');
+ const withdrawing=(await state()).inputs.find(i=>i.text===withdrawnText);
+ await composer.fill(draft);
+ const withdrawingRow=page.locator(`[data-input-id="${withdrawing.id}"]`);await withdrawingRow.getByRole('button',{name:'撤回',exact:true}).click();
+ await until(async()=>(await state()).inputs.find(i=>i.id===withdrawing.id)?.state==='cancelled','withdrawal persisted');
+ await until(async()=>(await composer.inputValue())===draft+'\n\n'+withdrawnText,'withdrawn text appended to existing draft');
+ await page.getByTestId('input-flow-status').getByText('已撤回，内容已恢复到输入框',{exact:false}).waitFor();
+ assert.equal(await page.locator('[data-testid="send-preview"]').filter({hasText:withdrawnText}).count(),0);
+ await until(async()=>await page.getByText(withdrawnText,{exact:true}).count()===0,'all legacy queue notices cleared after withdrawal');
+ assert.equal(requests.length,4,'withdrawing input must not stop or start another request');
+ assert.equal((await page.evaluate(()=>window.shineAI.session.getAll())).find(s=>s.id===sessionId)?.status,'running');
+ const tooLate=await page.evaluate(({id,inputId})=>window.development.inputFlow.cancel(id,inputId),{id:sessionId,inputId:delivery.inputs[0].id});
+ assert.equal(tooLate.success,false);assert.equal(tooLate.removed,false);assert.equal(tooLate.reason,'sent');
+ report.checks.withdrawButtonRestoresTextWithoutOverwritingDraftOrStoppingTask=true;
+ report.checks.withdrawnPreviewIsRemovedAndSentInputIsNotFalselyWithdrawn=true;
+ await page.screenshot({path:path.join(dir,'withdrawn-and-restored.png')});await composer.fill('');
  // Two messages arrive while a final text response is in flight. The existing
  // native end-of-turn flush must deliver both in order, exactly once each.
  for(const text of ['补充一：保留文件','补充二：不要部署'])await page.evaluate(({id,text})=>window.shineAI.session.sendMessage(id,text,{runningStrategy:'enqueue_while_running'}),{id:sessionId,text});
- await until(async()=>(await state()).inputs.length===3,'two new inputs queued');gates.get(4)();await until(()=>waiting.has(5),'next turn request held');
+ await until(async()=>(await state()).inputs.length===4,'two new inputs queued');gates.get(4)();await until(()=>waiting.has(5),'next turn request held');
  const firstFive=requests[4];assert.ok(JSON.stringify(firstFive).includes('补充一：保留文件'));
- gates.get(5)();await until(async()=>(await state()).inputs.every(i=>i.state==='sent'),'all inputs sent after text-only finish');
+ gates.get(5)();await until(async()=>(await state()).inputs.every(i=>['sent','cancelled'].includes(i.state)),'all inputs sent after text-only finish');
+ assert.ok(requests.every(r=>!JSON.stringify(r).includes(withdrawnText)),'withdrawn input leaked into a model request');
+ report.checks.withdrawnInputNeverEntersSubsequentModelRequests=true;
  assert.ok(requests.some(r=>JSON.stringify(r).includes('补充二：不要部署')));
  report.checks.textOnlyFinishDrainsQueuedInputsInOrder=true;
  await until(async()=>(await page.evaluate(()=>window.shineAI.session.getAll())).find(s=>s.id===sessionId)?.status==='waiting_input','fixture finished');
@@ -113,7 +155,7 @@ try{
  assert.equal(await page.getByTestId('execution-evidence').count(),0);
  report.checks.composerDoesNotShowTurnDebugPanel=true;
  const before=await state();await app.close();app=null;
- ({app,page}=await openTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));
+ ({app,page}=await openInputTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));
  await until(async()=>(await page.evaluate(()=>window.shineAI.session.getAll())).some(s=>s.id===sessionId),'restored session');await select();
  const after=await state();assert.deepEqual(after.inputs.map(i=>[i.id,i.state]),before.inputs.map(i=>[i.id,i.state]));assert.equal(after.reviewedRevision,before.reviewedRevision);
  report.checks.deliveryAndReviewStatePersistAcrossRestart=true;
@@ -124,6 +166,37 @@ try{
  holdStop=false;
  await until(async()=>(await page.evaluate(()=>window.shineAI.session.getAll())).find(s=>s.id===sessionId)?.status==='waiting_input','chat restoration completed before idle follow-up');
  await idleFollowup('重新打开已结束会话后的新问题','finishedChatFollowupAfterRestartReachesTransport');
+ // Reproduce the screenshot with two SDK ledger entries left unconfirmed when
+ // the previous process exited. Neither restoration nor dismissal may resend.
+ const beforeRecoveryRequests=requests.length,recoveryText='旧记录：放回草稿不自动重发',ignoredText='旧记录：忽略不再提醒';
+ await app.close();app=null;
+ const ledgerFile=path.join(data,'running-input',createHash('sha256').update(sessionId).digest('hex')+'.json');
+ const ledger=JSON.parse(fs.readFileSync(ledgerFile,'utf8'));
+ const recoveredIds=[randomUUID(),randomUUID()];
+ for(const [index,text]of [recoveryText,ignoredText].entries())ledger.inputs.push({id:recoveredIds[index],revision:++ledger.revision,text,state:'submitted',transport:'sdk',createdAt:new Date().toISOString()});
+ ledger.version++;fs.writeFileSync(ledgerFile,JSON.stringify(ledger));
+ ({app,page}=await openInputTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));await select();
+ const recoveryDetails=page.getByTestId('input-flow-recovery'),recoveryRow=page.locator(`[data-input-id="${recoveredIds[0]}"]`),ignoreRow=page.locator(`[data-input-id="${recoveredIds[1]}"]`);
+ await recoveryDetails.locator('summary').getByText('有 2 条消息在上次关闭时未确认送达',{exact:false}).waitFor();
+ assert.equal(await recoveryRow.getByText('上次关闭时未确认送达',{exact:true}).isVisible(),false,'recovery rows start collapsed');
+ await recoveryDetails.locator('summary').click();
+ await recoveryRow.getByText('上次关闭时未确认送达',{exact:true}).waitFor();
+ assert.equal(await recoveryRow.getByRole('button',{name:'重新发送',exact:true}).isVisible(),true);
+ await page.screenshot({path:path.join(dir,'interrupted-before-recovery.png')});
+ const recoveryComposer=page.locator('textarea').first();await recoveryComposer.fill('保留我正在写的草稿');
+ await recoveryRow.getByRole('button',{name:'放回输入框',exact:true}).click();
+ await until(async()=>(await recoveryComposer.inputValue())==='保留我正在写的草稿\n\n'+recoveryText,'interrupted input restored without replacing draft');
+ await recoveryRow.waitFor({state:'detached'});
+ await ignoreRow.getByRole('button',{name:'忽略',exact:true}).click();await ignoreRow.waitFor({state:'detached'});
+ assert.equal(requests.length,beforeRecoveryRequests,'recovery or dismissal made a model request');
+ const resolved=await state();assert.equal(resolved.inputs.find(i=>i.id===recoveredIds[0]).state,'restored');assert.equal(resolved.inputs.find(i=>i.id===recoveredIds[1]).state,'dismissed');
+ report.checks.interruptedRestoreAndDismissDoNotResendOrOverwriteDraft=true;
+ await page.screenshot({path:path.join(dir,'interrupted-restored-to-draft.png')});
+ await app.close();app=null;
+ ({app,page}=await openInputTestApp(data,{auth:19777,meeting:18577}));page.on('pageerror',e=>report.errors.push(e.message));await select();
+ const restarted=await state();assert.equal(restarted.inputs.find(i=>i.id===recoveredIds[0]).state,'restored');assert.equal(restarted.inputs.find(i=>i.id===recoveredIds[1]).state,'dismissed');
+ assert.equal(await page.locator(`[data-input-id="${recoveredIds[0]}"]`).count(),0);assert.equal(await page.locator(`[data-input-id="${recoveredIds[1]}"]`).count(),0);
+ assert.equal(requests.length,beforeRecoveryRequests);report.checks.resolvedInterruptionDoesNotReturnAfterRestart=true;
  report.requestCount=requests.length;report.inputStates=after.inputs.map(({revision,state,transport})=>({revision,state,transport}));
 }catch(error){report.errors.push(error.stack);process.exitCode=1;if(page&&!page.isClosed())await page.screenshot({path:path.join(dir,'failure.png')}).catch(()=>{});}
 finally{

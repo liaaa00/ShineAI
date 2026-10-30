@@ -10,7 +10,7 @@ if (!/^[a-f0-9]{40}$/.test(commit)) throw Error('Missing source commit');
 fs.mkdirSync('artifacts', { recursive: true });
 const notes = `ShineAI ${date} 桌面体验版。内部兼容版本 ${version}，源码提交：${commit}。
 
-本次更新：后台命令结果保留在原执行卡片内；移除回答下方的大块重复结果；回答后才发生的失败显示可定位的简短提醒；后续重试回答会收起旧提醒，原执行记录与日志保留。
+本次更新：左侧栏改为“空间 → 会话”直列布局，保留原主题配色、收藏和搜索；运行中输入支持按实际队列状态撤回与恢复草稿；改善聊天图片的尺寸、比例及展开预览；增加中文任务进度提示；同步已完成适配的新版记忆与本地工作工具，并保留独立服务商认证。后台执行结果继续收在对应工具详情中。
 
 安装文件：Windows x64 安装程序；Mac M 系列 DMG / ZIP；Mac Intel ZIP。Mac 解压或打开 DMG 后，将 ShineAI.app 移至“应用程序”。
 
